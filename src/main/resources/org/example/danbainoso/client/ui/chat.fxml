@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17.0.2-ea" xmlns:fx="http://javafx.com/javafx/17.0.2-ea" fx:controller="org.example.danbainoso.client.ui.ChatController">
+   <left>
+      <VBox spacing="10" style="-fx-background-color: #f0f0f0;">
+         <padding>
+            <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+         </padding>
+         <children>
+            <Label text="Danh bạ" textAlignment="CENTER">
+               <font>
+                  <Font name="System Bold" size="16.0" />
+               </font>
+            </Label>
+            <Separator />
+            <Label text="Liên hệ" />
+            <ListView fx:id="contactsList" prefHeight="200.0" prefWidth="200.0" />
+            <Label text="Nhóm" />
+            <ListView fx:id="groupsList" prefHeight="200.0" prefWidth="200.0" />
+            <Button fx:id="createGroupButton" mnemonicParsing="false" text="Tạo nhóm mới" />
+         </children>
+      </VBox>
+   </left>
+   <center>
+      <VBox spacing="10">
+         <padding>
+            <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+         </padding>
+         <children>
+            <Label fx:id="currentChatLabel" text="Chọn một cuộc trò chuyện" textAlignment="CENTER">
+               <font>
+                  <Font name="System Bold" size="16.0" />
+               </font>
+            </Label>
+            <Separator />
+            <TextArea fx:id="messageArea" editable="false" prefHeight="500.0" prefWidth="600.0" wrapText="true" />
+            <HBox spacing="10" alignment="CENTER_LEFT">
+               <children>
+                  <TextField fx:id="messageField" prefWidth="500.0" promptText="Nhập tin nhắn..." />
+                  <Button fx:id="sendButton" mnemonicParsing="false" onAction="#sendMessage" text="Gửi" />
+               </children>
+            </HBox>
+         </children>
+      </VBox>
+   </center>
+</BorderPane>
+

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
+
+<VBox alignment="CENTER" spacing="20" xmlns="http://javafx.com/javafx/17.0.2-ea" xmlns:fx="http://javafx.com/javafx/17.0.2-ea" fx:controller="org.example.danbainoso.client.ui.LoginController">
+   <padding>
+      <Insets bottom="40.0" left="40.0" right="40.0" top="40.0" />
+   </padding>
+   <children>
+      <Label text="DanBaiNoSo Chat" textAlignment="CENTER">
+         <font>
+            <Font name="System Bold" size="28.0" />
+         </font>
+      </Label>
+      <Label text="Đăng nhập vào hệ thống" textAlignment="CENTER">
+         <font>
+            <Font size="14.0" />
+         </font>
+      </Label>
+      <VBox spacing="10">
+         <children>
+            <Label text="Tên đăng nhập:" />
+            <TextField fx:id="usernameField" promptText="Nhập tên đăng nhập" />
+            <Label text="Mật khẩu:" />
+            <PasswordField fx:id="passwordField" promptText="Nhập mật khẩu" />
+         </children>
+      </VBox>
+      <HBox spacing="10" alignment="CENTER">
+         <children>
+            <Button fx:id="loginButton" mnemonicParsing="false" onAction="#handleLogin" text="Đăng nhập" />
+            <Button fx:id="registerButton" mnemonicParsing="false" onAction="#handleRegister" text="Đăng ký" />
+         </children>
+      </HBox>
+   </children>
+</VBox>
+

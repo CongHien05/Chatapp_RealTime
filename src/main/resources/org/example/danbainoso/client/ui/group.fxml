@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
+
+<VBox alignment="CENTER" spacing="20" xmlns="http://javafx.com/javafx/17.0.2-ea" xmlns:fx="http://javafx.com/javafx/17.0.2-ea" fx:controller="org.example.danbainoso.client.ui.GroupController">
+   <padding>
+      <Insets bottom="40.0" left="40.0" right="40.0" top="40.0" />
+   </padding>
+   <children>
+      <Label text="Tạo nhóm mới" textAlignment="CENTER">
+         <font>
+            <Font name="System Bold" size="20.0" />
+         </font>
+      </Label>
+      <VBox spacing="10">
+         <children>
+            <Label text="Tên nhóm:" />
+            <TextField fx:id="groupNameField" promptText="Nhập tên nhóm" />
+            <Label text="Mô tả:" />
+            <TextArea fx:id="descriptionField" prefHeight="150.0" prefWidth="400.0" promptText="Nhập mô tả nhóm (tùy chọn)" wrapText="true" />
+         </children>
+      </VBox>
+      <HBox spacing="10" alignment="CENTER">
+         <children>
+            <Button fx:id="createButton" mnemonicParsing="false" onAction="#handleCreate" text="Tạo nhóm" />
+            <Button fx:id="cancelButton" mnemonicParsing="false" onAction="#handleCancel" text="Hủy" />
+         </children>
+      </HBox>
+   </children>
+</VBox>
+
