@@ -8,17 +8,13 @@
 
 <VBox xmlns="http://javafx.com/javafx/17.0.2-ea" xmlns:fx="http://javafx.com/fxml"
       fx:controller="org.example.danbainoso.client.ui.GroupSettingsController"
-      spacing="12" style="-fx-background-color: white;"
+      spacing="12" styleClass="dialog-background-white"
       prefWidth="540" prefHeight="520" minWidth="520" minHeight="480">
     <padding>
         <Insets top="16" right="16" bottom="16" left="16"/>
     </padding>
     <children>
-        <Label text="Cài đặt nhóm">
-            <font>
-                <Font name="System Bold" size="18"/>
-            </font>
-        </Label>
+        <Label text="Cài đặt nhóm" styleClass="dialog-title-small"/>
 
         <GridPane hgap="10" vgap="10">
             <columnConstraints>
@@ -42,7 +38,7 @@
             </children>
         </GridPane>
 
-        <Label fx:id="infoLabel" wrapText="true" style="-fx-text-fill: #888888;"/>
+        <Label fx:id="infoLabel" wrapText="true" styleClass="text-muted"/>
 
         <Label text="Danh sách thành viên"/>
         <ListView fx:id="membersList" prefHeight="200.0"/>
@@ -50,15 +46,18 @@
         <HBox spacing="10" alignment="CENTER_RIGHT">
             <Button fx:id="addMemberButton" text="Thêm thành viên" onAction="#handleAddMember"/>
             <HBox spacing="4" alignment="CENTER_LEFT">
-                <Button fx:id="leaveGroupButton" text="Rời nhóm" onAction="#handleLeaveGroup"/>
+                <Button fx:id="leaveGroupButton" text="Rời nhóm" onAction="#handleLeaveGroup"
+                        styleClass="button-danger"/>
                 <Button fx:id="leaveInfoButton" text="?" minWidth="32" onAction="#handleLeaveInfo"
                         visible="false" managed="false" focusTraversable="false"/>
             </HBox>
             <Pane HBox.hgrow="ALWAYS"/>
-            <Button fx:id="deleteGroupButton" text="Xóa nhóm" onAction="#handleDeleteGroup"/>
-            <Button fx:id="saveButton" text="Lưu" onAction="#handleSave"/>
-            <Button fx:id="closeButton" text="Đóng" onAction="#handleClose"/>
+            <Button fx:id="deleteGroupButton" text="Xóa nhóm" onAction="#handleDeleteGroup"
+                    styleClass="button-danger"/>
+            <Button fx:id="saveButton" text="Lưu" onAction="#handleSave"
+                    styleClass="button-primary"/>
+            <Button fx:id="closeButton" text="Đóng" onAction="#handleClose"
+                    styleClass="button-secondary"/>
         </HBox>
     </children>
 </VBox>
-

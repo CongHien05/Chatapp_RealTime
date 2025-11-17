@@ -10,7 +10,7 @@
       fx:controller="org.example.danbainoso.client.ui.GroupController"
       alignment="CENTER"
       spacing="28"
-      style="-fx-background-color: linear-gradient(to bottom right, #fafafa, #f2f2f2);">
+      styleClass="dialog-background">
 
     <padding>
         <Insets top="40" right="40" bottom="40" left="40"/>
@@ -18,58 +18,44 @@
 
     <children>
 
-        <!-- Title -->
         <Label text="✨ Tạo nhóm mới"
                textAlignment="CENTER"
-               style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #333;"/>
+               styleClass="dialog-title"/>
 
-        <!-- Card -->
         <VBox spacing="16"
-              style="-fx-background-color: white;
-                     -fx-background-radius: 14;
-                     -fx-padding: 24;
-                     -fx-min-width: 420;
-                     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.10), 12, 0, 0, 4);">
+              styleClass="card"
+              minWidth="420">
 
             <children>
 
                 <Label text="Tên nhóm:"
-                       style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #444;"/>
+                       styleClass="form-label"/>
+
                 <TextField fx:id="groupNameField"
-                           promptText="Nhập tên nhóm"
-                           style="-fx-background-radius: 8; -fx-padding: 8;"/>
+                           promptText="Nhập tên nhóm"/>
 
                 <Label text="Mô tả:"
-                       style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #444;"/>
+                       styleClass="form-label"/>
 
                 <TextArea fx:id="descriptionField"
                           prefHeight="140"
                           wrapText="true"
-                          promptText="Nhập mô tả nhóm (tùy chọn)"
-                          style="-fx-background-radius: 8; -fx-padding: 10;"/>
+                          promptText="Nhập mô tả nhóm (tùy chọn)"/>
             </children>
 
         </VBox>
 
-        <!-- Buttons -->
         <HBox alignment="CENTER" spacing="14">
 
             <Button fx:id="createButton"
                     text="✔ Tạo nhóm"
                     onAction="#handleCreate"
-                    style="-fx-background-color: #2196f3;
-                           -fx-text-fill: white;
-                           -fx-background-radius: 10;
-                           -fx-padding: 8 16;
-                           -fx-font-weight: bold;"/>
+                    styleClass="button-primary"/>
 
             <Button fx:id="cancelButton"
                     text="Hủy"
                     onAction="#handleCancel"
-                    style="-fx-background-color: #bdbdbd;
-                           -fx-text-fill: white;
-                           -fx-background-radius: 10;
-                           -fx-padding: 8 16;"/>
+                    styleClass="button-secondary"/>
 
         </HBox>
 

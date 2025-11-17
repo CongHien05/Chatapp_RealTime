@@ -1,73 +1,120 @@
-/* Main Application Styles */
+/* ===================================================================
+   STYLES.CSS - PHIÊN BẢN HOÀN CHỈNH (ĐÃ SỬA LỖI)
+   =================================================================== */
+
+/* --- 1. BIẾN (VARIABLES) VÀ KIỂU CƠ BẢN --- */
 .root {
     -fx-font-family: "Segoe UI", Arial, sans-serif;
     -fx-font-size: 14px;
+
+    /* Màu chính (Success/Green) */
+    -fx-color-success: #4CAF50;
+    -fx-color-success-hover: #45a049;
+    -fx-color-success-pressed: #3d8b40;
+
+    /* Màu Primary (Blue) */
+    -fx-color-primary: #2196F3;
+    -fx-color-primary-hover: #1976D2;
+
+    /* Màu Warning (Orange) */
+    -fx-color-warning: #FF9800;
+    -fx-color-warning-hover: #F57C00;
+
+    /* Màu Danger (Red) */
+    -fx-color-danger: #f44336;
+    -fx-color-danger-hover: #d32f2f;
+
+    /* MỚI: Màu Secondary (Gray) cho nút Đóng/Hủy trung tính */
+    -fx-color-secondary: #bdbdbd;
+    -fx-color-secondary-hover: #aeaeae;
+
+    /* Màu Accent (Purple) */
+    -fx-color-accent: #9C27B0;
+    -fx-color-accent-hover: #7B1FA2;
+
+    /* Màu sắc chung */
+    -fx-text-light: white;
+    -fx-text-dark: #333;
+    -fx-text-gray: #888888;
+    -fx-text-link: #1a73e8;
+    -fx-text-link-hover: #0b5bd3;
+
+    /* * ĐÃ SỬA: Đổi tên biến từ -fx-border-color thành -fx-color-border
+     * để tránh lỗi StackOverflow.
+     */
+    -fx-color-border: #ccc;
+
+    -fx-background-light: #f0f0f0; /* Sidebar background */
+    -fx-background-content: #f9f9f9;
+    -fx-background-white: #ffffff;
+    -fx-background-hover: #e8f5e9;
+
+    /* CẬP NHẬT: Dùng gradient mới (sáng hơn) từ Group.fxml */
+        -fx-background-gradient: linear-gradient(to bottom right, #fafafa, #f2f2f2);
+        -fx-shadow-medium: dropshadow(gaussian, rgba(0,0,0,0.10), 12, 0, 0, 4);
 }
 
-/* Button Styles */
+/* --- 2. CÁC THÀNH PHẦN CƠ BẢN (BASE COMPONENTS) --- */
+
+.label {
+    -fx-text-fill: -fx-text-dark;
+}
+/* MỚI: Thêm class cho các nhãn (label) của form */
+.form-label {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #444;
+}
 .button {
-    -fx-background-color: #4CAF50;
-    -fx-text-fill: white;
+    -fx-background-color: -fx-color-success;
+    -fx-text-fill: -fx-text-light;
     -fx-padding: 10 20 10 20;
-    -fx-border-radius: 5;
-    -fx-background-radius: 5;
-    -fx-cursor: hand;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    /* CẬP NHẬT: Thống nhất padding cho tất cả các nút */
+        -fx-padding: 8 16;
 }
 
 .button:hover {
-    -fx-background-color: #45a049;
+    -fx-background-color: -fx-color-success-hover;
 }
 
 .button:pressed {
-    -fx-background-color: #3d8b40;
+    -fx-background-color: -fx-color-success-pressed;
 }
 
-/* Text Field Styles */
-.text-field {
+/* Gom nhóm Text-Field và Password-Field */
+.text-field, .password-field {
     -fx-padding: 8;
-    -fx-border-color: #ccc;
-    -fx-border-radius: 5;
-    -fx-background-radius: 5;
+    -fx-border-color: -fx-color-border; /* ĐÃ SỬA: Dùng tên biến mới */
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
 }
 
-.text-field:focused {
-    -fx-border-color: #4CAF50;
+.text-field:focused, .password-field:focused {
+    -fx-border-color: -fx-color-success;
 }
 
-/* Password Field Styles */
-.password-field {
-    -fx-padding: 8;
-    -fx-border-color: #ccc;
-    -fx-border-radius: 5;
-    -fx-background-radius: 5;
-}
-
-.password-field:focused {
-    -fx-border-color: #4CAF50;
-}
-
-/* Text Area Styles */
 .text-area {
     -fx-padding: 10;
-    -fx-border-color: #ccc;
-    -fx-border-radius: 5;
-    -fx-background-radius: 5;
+    -fx-border-color: -fx-color-border; /* ĐÃ SỬA: Dùng tên biến mới */
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
     -fx-font-family: "Consolas", "Courier New", monospace;
 }
 
 .text-area:focused {
-    -fx-border-color: #4CAF50;
+    -fx-border-color: -fx-color-success;
 }
 
 .text-area .content {
-    -fx-background-color: #f9f9f9;
+    -fx-background-color: -fx-background-content;
 }
 
-/* List View Styles */
 .list-view {
-    -fx-border-color: #ccc;
-    -fx-border-radius: 5;
-    -fx-background-radius: 5;
+    -fx-border-color: -fx-color-border; /* ĐÃ SỬA: Dùng tên biến mới */
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
 }
 
 .list-cell {
@@ -75,86 +122,117 @@
 }
 
 .list-cell:selected {
-    -fx-background-color: #4CAF50;
-    -fx-text-fill: white;
+    -fx-background-color: -fx-color-success;
+    -fx-text-fill: -fx-text-light;
 }
 
 .list-cell:hover {
-    -fx-background-color: #e8f5e9;
+    -fx-background-color: -fx-background-hover;
 }
 
-/* Label Styles */
-.label {
-    -fx-text-fill: #333;
-}
-
-/* VBox and HBox Styles */
-.vbox {
-    -fx-spacing: 10;
-}
-
-.hbox {
-    -fx-spacing: 10;
-}
-
-/* Separator Styles */
 .separator {
     -fx-padding: 5 0 5 0;
 }
+/* MỚI: Thêm kiểu mặc định cho TabPane */
+.tab-pane {
+    -fx-tab-min-width: 120;
+    -fx-background-insets: 0;
+    -fx-background-radius: 10;
+}
+/* --- 3. CÁC BIẾN THỂ NÚT (BUTTON VARIANTS) --- */
 
-/* Login Screen Specific */
-#loginButton {
-    -fx-background-color: #2196F3;
+.button-primary {
+    -fx-background-color: -fx-color-primary;
+    /* CẬP NHẬT: Thêm chữ đậm cho nút primary */
+        -fx-font-weight: bold;
+        -fx-padding: 8 16; /* Dùng padding nhỏ hơn cho các nút hành động */
+}
+.button-primary:hover {
+    -fx-background-color: -fx-color-primary-hover;
+
 }
 
-#loginButton:hover {
-    -fx-background-color: #1976D2;
+.button-warning {
+    -fx-background-color: -fx-color-warning;
+}
+.button-warning:hover {
+    -fx-background-color: -fx-color-warning-hover;
 }
 
-#registerButton {
-    -fx-background-color: #FF9800;
+.button-danger {
+    -fx-background-color: -fx-color-danger;
+}
+.button-danger:hover {
+    -fx-background-color: -fx-color-danger-hover;
 }
 
-#registerButton:hover {
-    -fx-background-color: #F57C00;
+.button-accent {
+    -fx-background-color: -fx-color-accent;
+}
+.button-accent:hover {
+    -fx-background-color: -fx-color-accent-hover;
 }
 
-/* Chat Screen Specific */
+/* MỚI: Nút phụ, dùng cho "Đóng", "Hủy" (trung tính) */
+.button-secondary {
+    -fx-background-color: -fx-color-secondary;
+    -fx-text-fill: -fx-text-light;
+    -fx-padding: 6 16; /* Kích thước nhỏ hơn 1 chút */
+    -fx-background-radius: 10;
+}
+.button-secondary:hover { -fx-background-color: -fx-color-secondary-hover; }
+
+/* --- 4. KIỂU CHO TỪNG THÀNH PHẦN/MÀN HÌNH --- */
+
+.sidebar {
+    -fx-background-color: -fx-background-light;
+}
+
 #sendButton {
-    -fx-background-color: #2196F3;
     -fx-pref-width: 80;
+    -fx-padding: 8 16; /* Thống nhất padding */
 }
 
-#sendButton:hover {
-    -fx-background-color: #1976D2;
+/* MỚI: Kiểu cho nền cửa sổ/dialog */
+.dialog-background {
+    -fx-background-color: -fx-background-gradient;
 }
 
-#createGroupButton {
-    -fx-background-color: #9C27B0;
+/* MỚI: Kiểu cho tiêu đề */
+.dialog-title {
+    /* CẬP NHẬT: Thống nhất cỡ chữ 22px cho tiêu đề dialog */
+        -fx-font-size: 22px;
+        -fx-font-weight: bold;
+        -fx-text-fill: -fx-text-dark;
 }
 
-#createGroupButton:hover {
-    -fx-background-color: #7B1FA2;
+/* MỚI: Kiểu "thẻ" (card) có đổ bóng, tái sử dụng được */
+.card {
+    -fx-background-color: -fx-background-white;
+    -fx-background-radius: 14;
+   /* CẬP NHẬT: Thống nhất padding 24px cho card */
+       -fx-padding: 24;
+       -fx-effect: -fx-shadow-medium;
 }
 
-/* Group Screen Specific */
-#createButton {
-    -fx-background-color: #4CAF50;
+/* --- MỚI: Thêm 3 class từ GroupSettings.fxml --- */
+
+/* Nền trắng trơn cho dialog */
+.dialog-background-white {
+    -fx-background-color: -fx-background-white;
 }
 
-#createButton:hover {
-    -fx-background-color: #45a049;
+/* Tiêu đề nhỏ hơn (18px) */
+.dialog-title-small {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -fx-text-dark;
 }
 
-#cancelButton {
-    -fx-background-color: #f44336;
+/* Văn bản phụ, màu xám */
+.text-muted {
+    -fx-text-fill: -fx-text-gray;
 }
-
-#cancelButton:hover {
-    -fx-background-color: #d32f2f;
-}
-
-/* Message Area Styles */
 #messageArea {
     -fx-font-size: 13px;
     -fx-line-spacing: 2px;
@@ -176,7 +254,7 @@
 }
 
 .message-bubble-other {
-    -fx-background-color: #ffffff;
+    -fx-background-color: -fx-background-white;
     -fx-border-color: #e0e0e0;
     -fx-border-radius: 14;
     -fx-alignment: CENTER_LEFT;
@@ -189,13 +267,13 @@
 
 .message-sender {
     -fx-font-size: 12px;
-    -fx-text-fill: #1a73e8;
+    -fx-text-fill: -fx-text-link;
     -fx-font-weight: bold;
 }
 
 .message-timestamp {
     -fx-font-size: 11px;
-    -fx-text-fill: #888888;
+    -fx-text-fill: -fx-text-gray;
 }
 
 .system-message {
@@ -208,18 +286,18 @@
 
 .load-more-button {
     -fx-background-color: transparent;
-    -fx-text-fill: #1a73e8;
+    -fx-text-fill: -fx-text-link;
     -fx-underline: true;
     -fx-cursor: hand;
 }
 
 .load-more-button:hover {
-    -fx-text-fill: #0b5bd3;
+    -fx-text-fill: -fx-text-link-hover;
 }
 
 .empty-message {
     -fx-font-size: 13px;
-    -fx-text-fill: #888888;
+    -fx-text-fill: -fx-text-gray;
     -fx-alignment: center;
 }
 
@@ -227,17 +305,13 @@
 .scroll-bar:vertical {
     -fx-pref-width: 12;
 }
-
 .scroll-bar:horizontal {
     -fx-pref-height: 12;
 }
-
 .scroll-bar .thumb {
-    -fx-background-color: #888;
+    -fx-background-color: -fx-text-gray;
     -fx-background-radius: 5;
 }
-
 .scroll-bar .thumb:hover {
     -fx-background-color: #666;
 }
-
