@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.layout.Pane?>
+<?import javafx.scene.text.Font?>
+
+<VBox xmlns="http://javafx.com/javafx/17.0.2-ea" xmlns:fx="http://javafx.com/fxml"
+      fx:controller="org.example.danbainoso.client.ui.GroupSettingsController"
+      spacing="12" style="-fx-background-color: white;"
+      prefWidth="540" prefHeight="520" minWidth="520" minHeight="480">
+    <padding>
+        <Insets top="16" right="16" bottom="16" left="16"/>
+    </padding>
+    <children>
+        <Label text="Cài đặt nhóm">
+            <font>
+                <Font name="System Bold" size="18"/>
+            </font>
+        </Label>
+
+        <GridPane hgap="10" vgap="10">
+            <columnConstraints>
+                <ColumnConstraints halignment="LEFT" prefWidth="110"/>
+                <ColumnConstraints hgrow="ALWAYS" />
+            </columnConstraints>
+            <children>
+                <Label text="Tên nhóm" GridPane.rowIndex="0"/>
+                <TextField fx:id="groupNameField" promptText="Nhập tên nhóm"
+                           GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+
+                <Label text="Mô tả" GridPane.rowIndex="1"/>
+                <TextArea fx:id="descriptionArea" prefRowCount="4" wrapText="true"
+                          GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+
+                <Label text="Tạo bởi" GridPane.rowIndex="2"/>
+                <Label fx:id="createdByLabel" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+
+                <Label text="Thành viên" GridPane.rowIndex="3"/>
+                <Label fx:id="memberCountLabel" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+            </children>
+        </GridPane>
+
+        <Label fx:id="infoLabel" wrapText="true" style="-fx-text-fill: #888888;"/>
+
+        <Label text="Danh sách thành viên"/>
+        <ListView fx:id="membersList" prefHeight="200.0"/>
+
+        <HBox spacing="10" alignment="CENTER_RIGHT">
+            <Button fx:id="addMemberButton" text="Thêm thành viên" onAction="#handleAddMember"/>
+            <HBox spacing="4" alignment="CENTER_LEFT">
+                <Button fx:id="leaveGroupButton" text="Rời nhóm" onAction="#handleLeaveGroup"/>
+                <Button fx:id="leaveInfoButton" text="?" minWidth="32" onAction="#handleLeaveInfo"
+                        visible="false" managed="false" focusTraversable="false"/>
+            </HBox>
+            <Pane HBox.hgrow="ALWAYS"/>
+            <Button fx:id="deleteGroupButton" text="Xóa nhóm" onAction="#handleDeleteGroup"/>
+            <Button fx:id="saveButton" text="Lưu" onAction="#handleSave"/>
+            <Button fx:id="closeButton" text="Đóng" onAction="#handleClose"/>
+        </HBox>
+    </children>
+</VBox>
+

@@ -219,19 +219,60 @@ public class GroupDAO {
         return false;
     }
     
-    // Get user role in group
-    public String getUserRole(int groupId, int userId) throws SQLException {
-        String sql = "SELECT role FROM group_members WHERE group_id = ? AND user_id = ?";
-        
+    // Update member role to admin
+    public boolean setGroupAdmin(int groupId, int userId) throws SQLException {
+        String sql = "UPDATE group_members SET role = 'ADMIN' WHERE group_id = ? AND user_id = ?";
+
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            
+
             pstmt.setInt(1, groupId);
             pstmt.setInt(2, userId);
-            
+
+            int affected = pstmt.executeUpdate();
+            if (affected == 0) {
+                logger.warn("User {} is not a member of group {}. Attempting to add as admin.", userId, groupId);
+                return addMember(groupId, userId, Group.GroupRole.ADMIN.name());
+            }
+            return true;
+        }
+    }
+
+    // Get list of admins in a group
+    public List<User> getGroupAdmins(int groupId) throws SQLException {
+        String sql = "SELECT u.* FROM users u " +
+                "INNER JOIN group_members gm ON u.user_id = gm.user_id " +
+                "WHERE gm.group_id = ? AND gm.role = 'ADMIN'";
+
+        List<User> admins = new ArrayList<>();
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, groupId);
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    admins.add(userDAO.mapResultSetToUser(rs));
+                }
+            }
+        }
+        return admins;
+    }
+
+    // Determine the user's role inside a group
+    public Group.GroupRole checkUserRole(int groupId, int userId) throws SQLException {
+        String sql = "SELECT role FROM group_members WHERE group_id = ? AND user_id = ?";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, groupId);
+            pstmt.setInt(2, userId);
+
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) {
-                    return rs.getString("role");
+                    return Group.GroupRole.fromString(rs.getString("role"));
                 }
             }
         }

@@ -14,6 +14,8 @@ public class Message implements Serializable {
     private MessageType messageType;
     private String fileUrl;
     private boolean isRead;
+    private boolean isEdited;
+    private boolean isDeleted;
     private Timestamp createdAt;
     
     // Transient fields for display
@@ -101,6 +103,22 @@ public class Message implements Serializable {
     
     public void setRead(boolean read) {
         isRead = read;
+    }
+    
+    public boolean isEdited() {
+        return isEdited;
+    }
+    
+    public void setEdited(boolean edited) {
+        isEdited = edited;
+    }
+    
+    public boolean isDeleted() {
+        return isDeleted;
+    }
+    
+    public void setDeleted(boolean deleted) {
+        isDeleted = deleted;
     }
     
     public Timestamp getCreatedAt() {

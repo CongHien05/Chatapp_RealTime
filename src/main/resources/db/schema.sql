@@ -58,6 +58,8 @@ CREATE TABLE messages (
     message_type ENUM('TEXT', 'IMAGE', 'FILE', 'VIDEO', 'AUDIO') DEFAULT 'TEXT',
     file_url VARCHAR(255),
     is_read BOOLEAN DEFAULT FALSE,
+    is_edited BOOLEAN DEFAULT FALSE,
+    is_deleted BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (sender_id) REFERENCES users(user_id) ON DELETE CASCADE,
     FOREIGN KEY (receiver_id) REFERENCES users(user_id) ON DELETE CASCADE,

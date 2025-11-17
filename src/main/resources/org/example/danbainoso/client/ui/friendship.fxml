@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
+
+<VBox xmlns="http://javafx.com/javafx/17"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="org.example.danbainoso.client.ui.FriendshipController"
+      spacing="20"
+      style="-fx-background-color: linear-gradient(to bottom right, #f4f4f4, #eeeeee);">
+
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <children>
+
+        <!-- TITLE -->
+        <Label text="👥 Quản lý bạn bè"
+               textAlignment="CENTER"
+               style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #333;"/>
+        <Separator/>
+
+        <!-- CARD CONTAINER -->
+        <VBox spacing="14" VBox.vgrow="ALWAYS"
+              style="-fx-background-color: white;
+                     -fx-background-radius: 14;
+                     -fx-padding: 20;
+                     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.12), 12, 0, 0, 3);">
+
+            <children>
+
+                <TabPane fx:id="friendshipTabs" VBox.vgrow="ALWAYS"
+                         style="-fx-tab-min-width: 120;
+                                -fx-background-insets: 0;
+                                -fx-background-radius: 10;">
+
+                    <tabs>
+
+                        <!-- TAB: FRIEND LIST -->
+                        <Tab text="Bạn bè">
+                            <content>
+                                <VBox spacing="10">
+                                    <padding>
+                                        <Insets top="12" right="12" bottom="12" left="12"/>
+                                    </padding>
+                                    <children>
+                                        <ListView fx:id="friendsList"
+                                                  prefHeight="300"
+                                                  style="-fx-background-radius: 10;"/>
+                                    </children>
+                                </VBox>
+                            </content>
+                        </Tab>
+
+                        <!-- TAB: FRIEND REQUESTS -->
+                        <Tab text="Lời mời kết bạn">
+                            <content>
+                                <VBox spacing="10">
+                                    <padding>
+                                        <Insets top="12" right="12" bottom="12" left="12"/>
+                                    </padding>
+                                    <children>
+                                        <ListView fx:id="friendRequestsList"
+                                                  prefHeight="300"
+                                                  style="-fx-background-radius: 10;"/>
+                                    </children>
+                                </VBox>
+                            </content>
+                        </Tab>
+
+                    </tabs>
+                </TabPane>
+
+            </children>
+        </VBox>
+
+        <!-- BUTTONS -->
+        <HBox spacing="10" alignment="CENTER_RIGHT">
+
+            <Button fx:id="closeButton"
+                    text="Đóng"
+                    onAction="#closeDialog"
+                    style="-fx-background-color: #bdbdbd;
+                           -fx-text-fill: white;
+                           -fx-background-radius: 10;
+                           -fx-padding: 6 16;"/>
+
+        </HBox>
+
+    </children>
+</VBox>

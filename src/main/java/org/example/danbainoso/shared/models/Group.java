@@ -7,6 +7,21 @@ import java.util.List;
 
 public class Group implements Serializable {
     private static final long serialVersionUID = 1L;
+
+    public enum GroupRole {
+        ADMIN, MEMBER;
+
+        public static GroupRole fromString(String value) {
+            if (value == null) {
+                return null;
+            }
+            try {
+                return GroupRole.valueOf(value.toUpperCase());
+            } catch (IllegalArgumentException ex) {
+                return null;
+            }
+        }
+    }
     
     private int groupId;
     private String groupName;

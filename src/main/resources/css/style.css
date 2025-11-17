@@ -160,6 +160,69 @@
     -fx-line-spacing: 2px;
 }
 
+.message-wrapper {
+    -fx-padding: 4 0 4 0;
+}
+
+.message-bubble {
+    -fx-padding: 10 14 10 14;
+    -fx-background-radius: 14;
+    -fx-spacing: 4;
+}
+
+.message-bubble-own {
+    -fx-background-color: #d9fdd3;
+    -fx-alignment: CENTER_RIGHT;
+}
+
+.message-bubble-other {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #e0e0e0;
+    -fx-border-radius: 14;
+    -fx-alignment: CENTER_LEFT;
+}
+
+.message-text {
+    -fx-font-size: 14px;
+    -fx-text-fill: #212121;
+}
+
+.message-sender {
+    -fx-font-size: 12px;
+    -fx-text-fill: #1a73e8;
+    -fx-font-weight: bold;
+}
+
+.message-timestamp {
+    -fx-font-size: 11px;
+    -fx-text-fill: #888888;
+}
+
+.system-message {
+    -fx-font-size: 12px;
+    -fx-text-fill: #666666;
+    -fx-background-color: rgba(0, 0, 0, 0.04);
+    -fx-padding: 6 12 6 12;
+    -fx-background-radius: 10;
+}
+
+.load-more-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #1a73e8;
+    -fx-underline: true;
+    -fx-cursor: hand;
+}
+
+.load-more-button:hover {
+    -fx-text-fill: #0b5bd3;
+}
+
+.empty-message {
+    -fx-font-size: 13px;
+    -fx-text-fill: #888888;
+    -fx-alignment: center;
+}
+
 /* Scroll Bar Styles */
 .scroll-bar:vertical {
     -fx-pref-width: 12;

@@ -13,7 +13,7 @@ public class MessageDAO {
     
     // Create message
     public Message createMessage(Message message) throws SQLException {
-        String sql = "INSERT INTO messages (sender_id, receiver_id, group_id, content, message_type, file_url, is_read) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO messages (sender_id, receiver_id, group_id, content, message_type, file_url, is_read, is_edited, is_deleted) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -33,6 +33,8 @@ public class MessageDAO {
             pstmt.setString(5, message.getMessageType().name());
             pstmt.setString(6, message.getFileUrl());
             pstmt.setBoolean(7, message.isRead());
+            pstmt.setBoolean(8, message.isEdited());
+            pstmt.setBoolean(9, message.isDeleted());
             
             int affectedRows = pstmt.executeUpdate();
             if (affectedRows == 0) {
@@ -78,12 +80,16 @@ public class MessageDAO {
     
     // Get private messages between two users
     public List<Message> getPrivateMessages(int userId1, int userId2, int limit) throws SQLException {
+        return getPrivateMessages(userId1, userId2, limit, 0);
+    }
+    
+    public List<Message> getPrivateMessages(int userId1, int userId2, int limit, int offset) throws SQLException {
         String sql = "SELECT m.*, u.username as sender_name, u.avatar_url as sender_avatar " +
                      "FROM messages m " +
                      "LEFT JOIN users u ON m.sender_id = u.user_id " +
                      "WHERE ((m.sender_id = ? AND m.receiver_id = ?) OR (m.sender_id = ? AND m.receiver_id = ?)) " +
                      "AND m.group_id IS NULL " +
-                     "ORDER BY m.created_at DESC LIMIT ?";
+                     "ORDER BY m.created_at DESC LIMIT ? OFFSET ?";
         
         List<Message> messages = new ArrayList<>();
         
@@ -95,6 +101,7 @@ public class MessageDAO {
             pstmt.setInt(3, userId2);
             pstmt.setInt(4, userId1);
             pstmt.setInt(5, limit);
+            pstmt.setInt(6, offset);
             
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
@@ -113,11 +120,15 @@ public class MessageDAO {
     
     // Get group messages
     public List<Message> getGroupMessages(int groupId, int limit) throws SQLException {
+        return getGroupMessages(groupId, limit, 0);
+    }
+    
+    public List<Message> getGroupMessages(int groupId, int limit, int offset) throws SQLException {
         String sql = "SELECT m.*, u.username as sender_name, u.avatar_url as sender_avatar " +
                      "FROM messages m " +
                      "LEFT JOIN users u ON m.sender_id = u.user_id " +
                      "WHERE m.group_id = ? " +
-                     "ORDER BY m.created_at DESC LIMIT ?";
+                     "ORDER BY m.created_at DESC LIMIT ? OFFSET ?";
         
         List<Message> messages = new ArrayList<>();
         
@@ -126,6 +137,7 @@ public class MessageDAO {
             
             pstmt.setInt(1, groupId);
             pstmt.setInt(2, limit);
+            pstmt.setInt(3, offset);
             
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
@@ -188,9 +200,22 @@ public class MessageDAO {
         return 0;
     }
     
-    // Delete message
-    public boolean deleteMessage(int messageId) throws SQLException {
-        String sql = "DELETE FROM messages WHERE message_id = ?";
+    // Update message content (edit)
+    public boolean updateMessage(int messageId, String newContent) throws SQLException {
+        String sql = "UPDATE messages SET content = ?, is_edited = TRUE WHERE message_id = ? AND is_deleted = FALSE";
+        
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setString(1, newContent);
+            pstmt.setInt(2, messageId);
+            return pstmt.executeUpdate() > 0;
+        }
+    }
+    
+    // Soft delete message
+    public boolean softDeleteMessage(int messageId) throws SQLException {
+        String sql = "UPDATE messages SET is_deleted = TRUE WHERE message_id = ? AND is_deleted = FALSE";
         
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -220,6 +245,8 @@ public class MessageDAO {
         message.setMessageType(Message.MessageType.valueOf(rs.getString("message_type")));
         message.setFileUrl(rs.getString("file_url"));
         message.setRead(rs.getBoolean("is_read"));
+        try { message.setEdited(rs.getBoolean("is_edited")); } catch (SQLException ignored) {}
+        try { message.setDeleted(rs.getBoolean("is_deleted")); } catch (SQLException ignored) {}
         message.setCreatedAt(rs.getTimestamp("created_at"));
         
         // Set sender info if available
