@@ -5,67 +5,104 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.text.Font?>
 
-<BorderPane xmlns="http://javafx.com/javafx/17.0.2-ea" xmlns:fx="http://javafx.com/javafx/17.0.2-ea" fx:controller="org.example.danbainoso.client.ui.ChatController">
+<BorderPane xmlns="http://javafx.com/javafx/17.0.2-ea" xmlns:fx="http://javafx.com/javafx/17.0.2-ea" fx:controller="org.example.danbainoso.client.ui.ChatController" styleClass="root-pane">
+    
     <left>
-        <VBox spacing="10" styleClass="sidebar">
-            <padding>
-                <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
-            </padding>
-            <children>
-                <Label text="Danh bạ" textAlignment="CENTER">
+        <VBox spacing="0" styleClass="sidebar" prefWidth="280.0">
+            <VBox alignment="CENTER_LEFT" spacing="5">
+                <padding>
+                    <Insets top="20" right="15" bottom="15" left="15"/>
+                </padding>
+                <Label text="DanBaiNoSo" styleClass="app-title">
                     <font>
-                        <Font name="System Bold" size="16.0" />
+                        <Font name="System Bold" size="20.0" />
                     </font>
                 </Label>
-                <Separator />
-                <Label text="Liên hệ" />
-                <ListView fx:id="contactsList" prefHeight="200.0" prefWidth="200.0" />
-                <Label text="Nhóm" />
-                <ListView fx:id="groupsList" prefHeight="200.0" prefWidth="200.0" />
+                <Label text="Messaging App" styleClass="app-subtitle" textFill="#888888"/>
+            </VBox>
 
-                <Button fx:id="createGroupButton" mnemonicParsing="false" text="Tạo nhóm mới" styleClass="button-accent" />
+            <HBox alignment="CENTER" spacing="10" styleClass="nav-container">
+                <padding>
+                    <Insets bottom="10.0" left="15.0" right="15.0" top="5.0" />
+                </padding>
+                <ToggleButton fx:id="btnTabContacts" text="Bạn bè" selected="true" maxWidth="Infinity" HBox.hgrow="ALWAYS" styleClass="nav-button, nav-button-left">
+                    <toggleGroup>
+                        <ToggleGroup fx:id="sidebarNav"/>
+                    </toggleGroup>
+                </ToggleButton>
+                <ToggleButton fx:id="btnTabGroups" text="Nhóm" toggleGroup="$sidebarNav" maxWidth="Infinity" HBox.hgrow="ALWAYS" styleClass="nav-button, nav-button-right"/>
+            </HBox>
 
-                <Button fx:id="manageFriendsButton" mnemonicParsing="false" text="Quản lý bạn bè" />
-            </children>
+            <StackPane VBox.vgrow="ALWAYS">
+                <padding>
+                    <Insets top="10" right="10" bottom="10" left="10"/>
+                </padding>
+                
+                <VBox fx:id="contactsView" spacing="10" visible="true">
+                    <ListView fx:id="contactsList" VBox.vgrow="ALWAYS" styleClass="custom-list-view" />
+                    <Button fx:id="manageFriendsButton" text="👥 Quản lý bạn bè" maxWidth="Infinity" styleClass="btn-outline"/>
+                </VBox>
+
+                <VBox fx:id="groupsView" spacing="10" visible="false">
+                    <ListView fx:id="groupsList" VBox.vgrow="ALWAYS" styleClass="custom-list-view" />
+                    <Button fx:id="createGroupButton" text="➕ Tạo nhóm mới" maxWidth="Infinity" styleClass="btn-accent"/>
+                </VBox>
+            </StackPane>
         </VBox>
     </left>
+
     <center>
-        <VBox spacing="10">
-            <padding>
-                <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
-            </padding>
-            <children>
-                <HBox alignment="CENTER" spacing="10">
-                    <children>
-                        <Label fx:id="currentChatLabel" text="Chọn một cuộc trò chuyện" textAlignment="CENTER">
-                            <font>
-                                <Font name="System Bold" size="16.0" />
-                            </font>
-                        </Label>
+        <VBox styleClass="chat-area">
+            <HBox alignment="CENTER_LEFT" spacing="15" styleClass="chat-header" minHeight="60.0">
+                <padding>
+                    <Insets left="20.0" right="20.0" />
+                </padding>
+                
+                <VBox alignment="CENTER_LEFT">
+                    <Label fx:id="currentChatLabel" text="Chào mừng trở lại!" styleClass="chat-title">
+                        <font>
+                            <Font name="System Bold" size="18.0" />
+                        </font>
+                    </Label>
+                    <Label fx:id="statusLabel" text="Trực tuyến" textFill="#2ecc71" styleClass="status-text">
+                        <font>
+                             <Font size="12.0" />
+                        </font>
+                    </Label>
+                </VBox>
+                
+                <Region HBox.hgrow="ALWAYS" />
 
-                        <Button fx:id="addFriendButton" mnemonicParsing="false" text="Kết bạn" visible="false" styleClass="button-primary"/>
-
-                        <Button fx:id="blockButton" mnemonicParsing="false" text="Chặn" visible="false" managed="false" styleClass="button-danger" />
-
-                        <Button fx:id="groupSettingsButton" mnemonicParsing="false" text="Cài đặt nhóm" visible="false" managed="false" />
-
-                        <Button fx:id="leaveGroupButton" mnemonicParsing="false" text="Rời nhóm" visible="false" managed="false" styleClass="button-danger" />
-                    </children>
+                <HBox alignment="CENTER_RIGHT" spacing="10">
+                    <Button fx:id="addFriendButton" text="Kết bạn" visible="false" styleClass="btn-small, btn-primary"/>
+                    <Button fx:id="blockButton" text="Chặn" visible="false" managed="false" styleClass="btn-small, btn-danger" />
+                    <Button fx:id="groupSettingsButton" text="⚙" visible="false" managed="false" styleClass="btn-icon" />
+                    <Button fx:id="leaveGroupButton" text="Rời nhóm" visible="false" managed="false" styleClass="btn-small, btn-danger" />
+                    <Button fx:id="logoutButton" text="Đăng xuất" styleClass="btn-small, btn-secondary" />
                 </HBox>
-                <Separator />
-                <ScrollPane fx:id="messagesScrollPane" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED" VBox.vgrow="ALWAYS">
-                    <content>
-                        <VBox fx:id="messagesContainer" spacing="12" prefWidth="600.0" />
-                    </content>
-                </ScrollPane>
-                <HBox spacing="10" alignment="CENTER_LEFT">
-                    <children>
-                        <TextField fx:id="messageField" prefWidth="500.0" promptText="Nhập tin nhắn..." />
+            </HBox>
 
-                        <Button fx:id="sendButton" mnemonicParsing="false" onAction="#sendMessage" text="Gửi" styleClass="button-primary" />
-                    </children>
-                </HBox>
-            </children>
+            <Separator />
+
+            <ScrollPane fx:id="messagesScrollPane" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED" VBox.vgrow="ALWAYS" styleClass="message-scroll">
+                <content>
+                    <VBox fx:id="messagesContainer" spacing="15" styleClass="message-container">
+                        <padding>
+                            <Insets top="20" right="20" bottom="20" left="20"/>
+                        </padding>
+                    </VBox>
+                </content>
+            </ScrollPane>
+
+            <HBox spacing="15" alignment="CENTER" styleClass="input-area" minHeight="70.0">
+                <padding>
+                    <Insets left="20.0" right="20.0" top="10.0" bottom="10.0"/>
+                </padding>
+                
+                <TextField fx:id="messageField" promptText="Nhập tin nhắn..." HBox.hgrow="ALWAYS" maxWidth="Infinity" styleClass="input-field"/>
+                
+                <Button fx:id="sendButton" onAction="#sendMessage" text="Gửi" styleClass="btn-send" minWidth="60"/>
+            </HBox>
         </VBox>
     </center>
 </BorderPane>

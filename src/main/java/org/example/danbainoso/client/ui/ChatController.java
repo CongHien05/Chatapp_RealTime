@@ -3,9 +3,12 @@ package org.example.danbainoso.client.ui;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import org.example.danbainoso.client.ClientMain;
@@ -28,9 +31,9 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 
 public class ChatController implements ChatClientCallback, VideoClientCallback {
@@ -44,6 +47,21 @@ public class ChatController implements ChatClientCallback, VideoClientCallback {
     
     @FXML
     private ListView<String> groupsList;
+    
+    @FXML
+    private ToggleButton btnTabContacts;
+    
+    @FXML
+    private ToggleButton btnTabGroups;
+    
+    @FXML
+    private VBox contactsView;
+    
+    @FXML
+    private VBox groupsView;
+    
+    @FXML
+    private Label statusLabel;
     
     @FXML
     private TextField messageField;
@@ -68,6 +86,9 @@ public class ChatController implements ChatClientCallback, VideoClientCallback {
 
     @FXML
     private Button leaveGroupButton;
+
+    @FXML
+    private Button logoutButton;
     
     @FXML
     private Label currentChatLabel;
@@ -88,6 +109,7 @@ public class ChatController implements ChatClientCallback, VideoClientCallback {
     private boolean currentUserIsGroupAdmin = false;
     private final Label blockedInfoLabel = new Label();
     private final List<Group> cachedGroups = new ArrayList<>();
+    private final List<User> cachedContacts = new ArrayList<>();
     
     @FXML
     public void initialize() {
@@ -109,11 +131,18 @@ public class ChatController implements ChatClientCallback, VideoClientCallback {
         // Register callbacks
         clientRMI.registerCallbacks(this, this);
         
+        // Setup custom cell factories for modern UI
+        setupContactsListCellFactory();
+        setupGroupsListCellFactory();
+        
+        // Setup tab switching with ToggleButtons
+        setupTabSwitching();
+        
         // Setup event handlers
         contactsList.setOnMouseClicked(e -> {
-            String selected = contactsList.getSelectionModel().getSelectedItem();
-            if (selected != null && !selected.equals("Tạo nhóm mới")) {
-                loadContactChat(selected);
+            int index = contactsList.getSelectionModel().getSelectedIndex();
+            if (index >= 0) {
+                loadContactByIndex(index);
             }
         });
         
@@ -140,6 +169,7 @@ public class ChatController implements ChatClientCallback, VideoClientCallback {
         leaveGroupButton.setVisible(false);
         leaveGroupButton.setManaged(false);
         leaveGroupButton.setOnAction(e -> handleLeaveGroupShortcut());
+        logoutButton.setOnAction(e -> handleLogout());
         blockedInfoLabel.getStyleClass().add("system-message");
         blockedInfoLabel.setWrapText(true);
         
@@ -155,65 +185,148 @@ public class ChatController implements ChatClientCallback, VideoClientCallback {
         } catch (Exception e) {
             logger.error("Failed to update user status", e);
         }
+        
+        // Setup window close handler to set status to OFFLINE
+        setupWindowCloseHandler();
+        
         // Load data after user is set
         loadContacts();
         loadGroups();
+    }
+    
+    /**
+     * Setup handler to update status to OFFLINE when window is closed
+     */
+    private void setupWindowCloseHandler() {
+        Platform.runLater(() -> {
+            Stage stage = (Stage) currentChatLabel.getScene().getWindow();
+            if (stage != null) {
+                stage.setOnCloseRequest(event -> {
+                    logger.info("Window closing, updating user status to OFFLINE");
+                    try {
+                        if (currentUser != null) {
+                            clientRMI.updateUserStatus(User.UserStatus.OFFLINE);
+                            // Give server time to notify other clients
+                            Thread.sleep(200);
+                            clientRMI.unregisterCallbacks();
+                            logger.info("User {} status set to OFFLINE on window close", currentUser.getUsername());
+                        }
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        logger.error("Status update interrupted on window close", e);
+                    } catch (Exception e) {
+                        logger.error("Failed to update status on window close", e);
+                    }
+                });
+            }
+        });
     }
     
     private void loadContacts() {
         if (currentUser == null) {
             return;
         }
-        try {
-            List<User> users = clientRMI.searchUsers("");
-            contactsList.getItems().clear();
-            contactsList.getItems().add("Tạo nhóm mới");
-            for (User user : users) {
-                if (user.getUserId() != currentUser.getUserId()) {
-                    contactsList.getItems().add(user.getUsername() + " (" + user.getStatus() + ")");
-                }
+        new Thread(() -> {
+            try {
+                List<User> users = clientRMI.searchUsers("");
+                Platform.runLater(() -> {
+                    cachedContacts.clear();
+                    for (User user : users) {
+                        if (user.getUserId() != currentUser.getUserId()) {
+                            cachedContacts.add(user);
+                        }
+                    }
+                    contactsList.getItems().clear();
+                    contactsList.getItems().addAll(
+                            cachedContacts.stream()
+                                    .map(u -> u.getUsername() + " (" + u.getStatus() + ")")
+                                    .collect(Collectors.toList())
+                    );
+                });
+            } catch (Exception e) {
+                logger.error("Failed to load contacts", e);
             }
-        } catch (Exception e) {
-            logger.error("Failed to load contacts", e);
-        }
+        }).start();
     }
     
     private void loadGroups() {
+        loadGroups(null);
+    }
+
+    private void loadGroups(Runnable onFinish) {
         if (currentUser == null) {
+            if (onFinish != null) {
+                onFinish.run();
+            }
             return;
         }
-        try {
-            List<Group> groups = clientRMI.getUserGroups(currentUser.getUserId());
-            cachedGroups.clear();
-            cachedGroups.addAll(groups);
-            groupsList.getItems().clear();
-            for (Group group : groups) {
-                groupsList.getItems().add(formatGroupListItem(group));
+        new Thread(() -> {
+            try {
+                List<Group> groups = clientRMI.getUserGroups(currentUser.getUserId());
+                Platform.runLater(() -> {
+                    cachedGroups.clear();
+                    cachedGroups.addAll(groups);
+                    groupsList.getItems().setAll(
+                            groups.stream()
+                                    .map(this::formatGroupListItem)
+                                    .collect(Collectors.toList())
+                    );
+                    updateGroupActionButtons();
+                    if (onFinish != null) {
+                        onFinish.run();
+                    }
+                });
+            } catch (Exception e) {
+                logger.error("Failed to load groups", e);
             }
-        } catch (Exception e) {
-            logger.error("Failed to load groups", e);
-        }
+        }).start();
     }
     
-    private void loadContactChat(String contactName) {
-        try {
-            String username = contactName.split(" ")[0];
-            List<User> users = clientRMI.searchUsers(username);
-            for (User user : users) {
-                if (user.getUsername().equals(username)) {
-                    selectedContact = user;
-                    selectedGroup = null;
-                    currentUserIsGroupAdmin = false;
-                    refreshGroupSettingsButtonState();
-                    updateGroupActionButtons();
-                    currentChatLabel.setText("Chat với: " + user.getUsername());
-                    checkFriendshipStatus(user);
-                    prepareContactConversation(user);
-                    break;
-                }
+    private void loadContactByIndex(int contactIndex) {
+        if (contactIndex < 0 || contactIndex >= cachedContacts.size()) {
+            return;
+        }
+        User user = cachedContacts.get(contactIndex);
+        loadContactChat(user);
+    }
+
+    private void loadContactChat(User user) {
+        if (user == null) {
+            return;
+        }
+        
+        // Clear group selection khi chuyển sang contact
+        groupsList.getSelectionModel().clearSelection();
+        
+        // Luôn load lại conversation để đảm bảo hiển thị đúng và scroll đúng vị trí
+        selectedContact = user;
+        selectedGroup = null;
+        currentUserIsGroupAdmin = false;
+        refreshGroupSettingsButtonState();
+        updateGroupActionButtons();
+        currentChatLabel.setText("Chat với: " + user.getUsername());
+        
+        // Update status label
+        updateStatusLabel(user);
+        
+        checkFriendshipStatus(user);
+        prepareContactConversation(user);
+    }
+    
+    /**
+     * Update the status label based on user's online status
+     */
+    private void updateStatusLabel(User user) {
+        if (user != null && statusLabel != null) {
+            if (user.getStatus() == User.UserStatus.ONLINE) {
+                statusLabel.setText("● Đang hoạt động");
+                statusLabel.setStyle("-fx-text-fill: #2ecc71; -fx-font-size: 12px;");
+            } else {
+                statusLabel.setText("● Không hoạt động");
+                statusLabel.setStyle("-fx-text-fill: #95a5a6; -fx-font-size: 12px;");
             }
-        } catch (Exception e) {
-            logger.error("Failed to load contact chat", e);
+        } else if (statusLabel != null) {
+            statusLabel.setText("");
         }
     }
     
@@ -294,6 +407,11 @@ public class ChatController implements ChatClientCallback, VideoClientCallback {
             if (group == null) {
                 return;
             }
+            
+            // Clear contact selection khi chuyển sang group
+            contactsList.getSelectionModel().clearSelection();
+            
+            // Luôn load lại conversation để đảm bảo hiển thị đúng và scroll đúng vị trí
             selectedGroup = group;
             selectedContact = null;
             currentUserIsGroupAdmin = false;
@@ -304,6 +422,18 @@ public class ChatController implements ChatClientCallback, VideoClientCallback {
             updateBlockButtonVisibility(false);
             enableMessaging();
             currentChatLabel.setText("Nhóm: " + group.getGroupName());
+            
+            // Update status label for group
+            if (statusLabel != null) {
+                try {
+                    List<User> members = clientRMI.getGroupMembers(group.getGroupId());
+                    statusLabel.setText(members.size() + " thành viên");
+                    statusLabel.setStyle("-fx-text-fill: #95a5a6;");
+                } catch (Exception e) {
+                    statusLabel.setText("");
+                }
+            }
+            
             conversationLoader.loadConversation(null, selectedGroup);
             fetchGroupRoleForSelectedGroup();
         } catch (Exception e) {
@@ -657,6 +787,8 @@ public class ChatController implements ChatClientCallback, VideoClientCallback {
             
             GroupController groupController = loader.getController();
             groupController.setCurrentUser(currentUser);
+            groupController.setOnGroupCreated(createdGroup ->
+                    loadGroups(() -> selectGroupById(createdGroup.getGroupId())));
             
             Stage stage = new Stage();
             stage.setTitle("Tạo nhóm mới");
@@ -666,18 +798,37 @@ public class ChatController implements ChatClientCallback, VideoClientCallback {
             logger.error("Failed to open create group window", e);
         }
     }
+
+    private void selectGroupById(int groupId) {
+        for (int i = 0; i < cachedGroups.size(); i++) {
+            if (cachedGroups.get(i).getGroupId() == groupId) {
+                groupsList.getSelectionModel().select(i);
+                loadGroupChat(i);
+                return;
+            }
+        }
+    }
     
     // ChatClientCallback implementation
     @Override
     public void onMessageReceived(Message message) throws RemoteException {
         mediaHandler.playNotificationSound();
+        // handleIncomingMessage đã tự check và thêm message vào UI nếu thuộc conversation hiện tại
+        // Không cần reload lại vì sẽ gây duplicate hoặc sai thứ tự
         conversationLoader.handleIncomingMessage(message);
     }
     
     @Override
     public void onUserStatusChanged(int userId, User.UserStatus status) throws RemoteException {
         Platform.runLater(() -> {
+            // Update the contacts list to reflect new status
             loadContacts();
+            
+            // If the user whose status changed is the currently selected contact, update status label
+            if (selectedContact != null && selectedContact.getUserId() == userId) {
+                selectedContact.setStatus(status);
+                updateStatusLabel(selectedContact);
+            }
         });
     }
     
@@ -708,6 +859,7 @@ public class ChatController implements ChatClientCallback, VideoClientCallback {
     
     @Override
     public void onMessageUpdated(Message message) throws RemoteException {
+        // handleMessageUpdated đã tự check và reload nếu cần
         conversationLoader.handleMessageUpdated(message);
     }
     
@@ -813,14 +965,47 @@ public class ChatController implements ChatClientCallback, VideoClientCallback {
         if (timestamp == null) {
             return "";
         }
-        LocalDateTime messageTime = LocalDateTime.ofInstant(timestamp.toInstant(), ZoneId.systemDefault());
-        LocalDate messageDate = messageTime.toLocalDate();
-        LocalDate today = LocalDate.now(ZoneId.systemDefault());
-        
-        if (messageDate.isEqual(today)) {
-            return messageTime.format(TODAY_FORMATTER);
+        try {
+            // Chuyển timestamp về local time
+            LocalDateTime messageTime = timestamp.toLocalDateTime();
+            LocalDate messageDate = messageTime.toLocalDate();
+            LocalDate today = LocalDate.now();
+            LocalDate yesterday = today.minusDays(1);
+            LocalDate tomorrow = today.plusDays(1);
+            
+            // Nếu timestamp từ DB sai (ngày mai), điều chỉnh về hôm nay
+            if (messageDate.isEqual(tomorrow)) {
+                logger.warn("Message timestamp is in the future, adjusting: {}", timestamp);
+                messageTime = messageTime.minusDays(1);
+                messageDate = messageTime.toLocalDate();
+            }
+            
+            if (messageDate.isEqual(today)) {
+                return messageTime.format(TODAY_FORMATTER);
+            } else if (messageDate.isEqual(yesterday)) {
+                return "Hôm qua " + messageTime.format(TODAY_FORMATTER);
+            }
+            return messageTime.format(DEFAULT_FORMATTER);
+        } catch (Exception e) {
+            logger.error("Failed to format timestamp: {}", timestamp, e);
+            return timestamp.toString();
         }
-        return messageTime.format(DEFAULT_FORMATTER);
+    }
+
+    private boolean isMessageForCurrentConversation(Message message) {
+        if (message == null) {
+            return false;
+        }
+        if (selectedGroup != null && message.getGroupId() != null) {
+            return message.getGroupId() == selectedGroup.getGroupId();
+        }
+        if (selectedContact != null && message.getReceiverId() != null && currentUser != null) {
+            int contactId = selectedContact.getUserId();
+            int selfId = currentUser.getUserId();
+            return (message.getSenderId() == contactId && message.getReceiverId() == selfId) ||
+                    (message.getSenderId() == selfId && message.getReceiverId() == contactId);
+        }
+        return false;
     }
     
     private void showAlert(String msg) {
@@ -828,5 +1013,275 @@ public class ChatController implements ChatClientCallback, VideoClientCallback {
         alert.setHeaderText(null);
         alert.setContentText(msg);
         alert.showAndWait();
+    }
+    
+    private void handleLogout() {
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Đăng xuất");
+        confirm.setHeaderText("Bạn có chắc chắn muốn đăng xuất?");
+        confirm.setContentText("Bạn sẽ cần đăng nhập lại để tiếp tục sử dụng.");
+        
+        Optional<ButtonType> result = confirm.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            try {
+                // Update status to offline FIRST before unregistering callbacks
+                if (currentUser != null) {
+                    logger.info("Updating user {} status to OFFLINE before logout", currentUser.getUsername());
+                    clientRMI.updateUserStatus(User.UserStatus.OFFLINE);
+                    
+                    // Give server time to notify other clients about status change
+                    Thread.sleep(200);
+                }
+                
+                // Now unregister callbacks
+                clientRMI.unregisterCallbacks();
+                logger.info("Callbacks unregistered for user {}", currentUser != null ? currentUser.getUsername() : "unknown");
+                
+                // Get current stage and keep it
+                Stage stage = (Stage) logoutButton.getScene().getWindow();
+                
+                // Load login screen
+                FXMLLoader loader = new FXMLLoader(getClass().getResource("/org/example/danbainoso/client/ui/login.fxml"));
+                Parent root = loader.load();
+                
+                // Reuse the same stage (window) with proper size for login
+                Scene loginScene = new Scene(root, 400, 350);
+                loginScene.getStylesheets().add(getClass().getResource("/css/style.css").toExternalForm());
+                stage.setScene(loginScene);
+                stage.setTitle("Đăng nhập - DanBaiNoSo Chat");
+                stage.centerOnScreen();
+                
+                logger.info("User logged out successfully");
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                logger.error("Logout interrupted", e);
+                showAlert("Đăng xuất bị gián đoạn");
+            } catch (Exception e) {
+                logger.error("Failed to logout", e);
+                showAlert("Lỗi khi đăng xuất: " + e.getMessage());
+            }
+        }
+    }
+    
+    /**
+     * Setup tab switching between Contacts and Groups using ToggleButtons
+     */
+    private void setupTabSwitching() {
+        // Initially show contacts view
+        contactsView.setVisible(true);
+        contactsView.setManaged(true);
+        groupsView.setVisible(false);
+        groupsView.setManaged(false);
+        
+        // Listen to toggle button changes
+        btnTabContacts.selectedProperty().addListener((obs, wasSelected, isSelected) -> {
+            if (isSelected) {
+                contactsView.setVisible(true);
+                contactsView.setManaged(true);
+                groupsView.setVisible(false);
+                groupsView.setManaged(false);
+            }
+        });
+        
+        btnTabGroups.selectedProperty().addListener((obs, wasSelected, isSelected) -> {
+            if (isSelected) {
+                contactsView.setVisible(false);
+                contactsView.setManaged(false);
+                groupsView.setVisible(true);
+                groupsView.setManaged(true);
+            }
+        });
+    }
+    
+    /**
+     * Setup custom cell factory for contacts list with modern UI
+     */
+    private void setupContactsListCellFactory() {
+        contactsList.setCellFactory(lv -> new ListCell<String>() {
+            private final HBox container = new HBox(12);
+            private final Label avatarLabel = new Label();
+            private final VBox textContainer = new VBox(2);
+            private final HBox nameRow = new HBox(6);
+            private final Label nameLabel = new Label();
+            private final Label statusDot = new Label("●");
+            private final Label statusLabel = new Label();
+            
+            {
+                // Avatar styling
+                avatarLabel.setStyle(
+                    "-fx-background-color: linear-gradient(to bottom right, #667eea, #764ba2);" +
+                    "-fx-text-fill: white;" +
+                    "-fx-font-size: 16px;" +
+                    "-fx-font-weight: bold;" +
+                    "-fx-min-width: 44px;" +
+                    "-fx-min-height: 44px;" +
+                    "-fx-max-width: 44px;" +
+                    "-fx-max-height: 44px;" +
+                    "-fx-alignment: center;" +
+                    "-fx-background-radius: 22px;"
+                );
+                
+                // Name styling
+                nameLabel.setStyle(
+                    "-fx-font-size: 14px;" +
+                    "-fx-font-weight: bold;" +
+                    "-fx-text-fill: #212121;"
+                );
+                
+                // Status dot styling
+                statusDot.setStyle(
+                    "-fx-font-size: 10px;" +
+                    "-fx-padding: 0;"
+                );
+                
+                // Status text styling
+                statusLabel.setStyle(
+                    "-fx-font-size: 12px;" +
+                    "-fx-text-fill: #65676b;"
+                );
+                
+                nameRow.getChildren().addAll(nameLabel);
+                nameRow.setAlignment(Pos.CENTER_LEFT);
+                
+                HBox statusRow = new HBox(4);
+                statusRow.getChildren().addAll(statusDot, statusLabel);
+                statusRow.setAlignment(Pos.CENTER_LEFT);
+                
+                textContainer.getChildren().addAll(nameRow, statusRow);
+                textContainer.setAlignment(Pos.CENTER_LEFT);
+                container.getChildren().addAll(avatarLabel, textContainer);
+                container.setAlignment(Pos.CENTER_LEFT);
+                container.setPadding(new Insets(8, 12, 8, 12));
+            }
+            
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                
+                if (empty || item == null) {
+                    setGraphic(null);
+                    setText(null);
+                } else {
+                    // Get user from cached list
+                    int index = getIndex();
+                    if (index >= 0 && index < cachedContacts.size()) {
+                        User user = cachedContacts.get(index);
+                        
+                        // Set avatar (first letter of username)
+                        String initial = user.getUsername().substring(0, 1).toUpperCase();
+                        avatarLabel.setText(initial);
+                        
+                        // Set name
+                        nameLabel.setText(user.getUsername());
+                        
+                        // Set status with colored dot
+                        if (user.getStatus() == User.UserStatus.ONLINE) {
+                            statusDot.setStyle("-fx-font-size: 10px; -fx-text-fill: #2ecc71; -fx-padding: 0;");
+                            statusLabel.setText("Đang hoạt động");
+                            statusLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #2ecc71;");
+                        } else {
+                            statusDot.setStyle("-fx-font-size: 10px; -fx-text-fill: #95a5a6; -fx-padding: 0;");
+                            statusLabel.setText("Không hoạt động");
+                            statusLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #95a5a6;");
+                        }
+                    } else {
+                        // Fallback for simple string display
+                        avatarLabel.setText(item.substring(0, 1).toUpperCase());
+                        nameLabel.setText(item);
+                        statusDot.setVisible(false);
+                        statusLabel.setText("");
+                    }
+                    
+                    setGraphic(container);
+                    setText(null);
+                }
+            }
+        });
+    }
+    
+    /**
+     * Setup custom cell factory for groups list with modern UI
+     */
+    private void setupGroupsListCellFactory() {
+        groupsList.setCellFactory(lv -> new ListCell<String>() {
+            private final HBox container = new HBox(12);
+            private final Label avatarLabel = new Label();
+            private final VBox textContainer = new VBox(2);
+            private final Label nameLabel = new Label();
+            private final Label membersLabel = new Label();
+            
+            {
+                // Avatar styling (different gradient for groups)
+                avatarLabel.setStyle(
+                    "-fx-background-color: linear-gradient(to bottom right, #f093fb, #f5576c);" +
+                    "-fx-text-fill: white;" +
+                    "-fx-font-size: 16px;" +
+                    "-fx-font-weight: bold;" +
+                    "-fx-min-width: 44px;" +
+                    "-fx-min-height: 44px;" +
+                    "-fx-max-width: 44px;" +
+                    "-fx-max-height: 44px;" +
+                    "-fx-alignment: center;" +
+                    "-fx-background-radius: 22px;"
+                );
+                
+                // Name styling
+                nameLabel.setStyle(
+                    "-fx-font-size: 14px;" +
+                    "-fx-font-weight: bold;" +
+                    "-fx-text-fill: #212121;"
+                );
+                
+                // Members count styling
+                membersLabel.setStyle(
+                    "-fx-font-size: 12px;" +
+                    "-fx-text-fill: #65676b;"
+                );
+                
+                textContainer.getChildren().addAll(nameLabel, membersLabel);
+                textContainer.setAlignment(Pos.CENTER_LEFT);
+                container.getChildren().addAll(avatarLabel, textContainer);
+                container.setAlignment(Pos.CENTER_LEFT);
+                container.setPadding(new Insets(8, 12, 8, 12));
+            }
+            
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                
+                if (empty || item == null) {
+                    setGraphic(null);
+                    setText(null);
+                } else {
+                    // Get group from cached list
+                    int index = getIndex();
+                    if (index >= 0 && index < cachedGroups.size()) {
+                        Group group = cachedGroups.get(index);
+                        
+                        // Set avatar (group icon)
+                        avatarLabel.setText("👥");
+                        
+                        // Set name
+                        nameLabel.setText(group.getGroupName());
+                        
+                        // Set members count (we'll fetch this)
+                        try {
+                            List<User> members = clientRMI.getGroupMembers(group.getGroupId());
+                            membersLabel.setText(members.size() + " thành viên");
+                        } catch (Exception e) {
+                            membersLabel.setText("Nhóm");
+                        }
+                    } else {
+                        // Fallback for simple string display
+                        avatarLabel.setText("👥");
+                        nameLabel.setText(item);
+                        membersLabel.setText("");
+                    }
+                    
+                    setGraphic(container);
+                    setText(null);
+                }
+            }
+        });
     }
 }

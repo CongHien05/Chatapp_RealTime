@@ -47,6 +47,7 @@ public class ConversationLoader {
     private int currentOffset = 0;
     private boolean isLoading = false;
     private boolean hasMore = true;
+    private int conversationVersion = 0;
 
     public ConversationLoader(ClientRMI clientRMI,
                               VBox messagesContainer,
@@ -71,27 +72,38 @@ public class ConversationLoader {
 
         this.loadMoreButton = new Button("Tải thêm");
         this.loadMoreButton.getStyleClass().add("load-more-button");
-        this.loadMoreButton.setOnAction(e -> loadMoreMessages());
+        this.loadMoreButton.setOnAction(e -> loadMoreMessages(conversationVersion));
 
         this.emptyStateLabel = new Label("Chưa có tin nhắn");
         this.emptyStateLabel.getStyleClass().add("empty-message");
     }
 
     public void loadConversation(User contact, Group group) {
+        conversationVersion++;
+        final int versionSnapshot = conversationVersion;
+        
+        logger.debug("Loading conversation for contact={}, group={}", 
+                contact != null ? contact.getUsername() : "null", 
+                group != null ? group.getGroupName() : "null");
+
+        // Reset state NGAY LẬP TỨC trước khi load
+        currentMessages.clear();
+        currentOffset = 0;
+        isLoading = false;
+        hasMore = true;
+        
         Platform.runLater(() -> {
-            currentMessages.clear();
-            currentOffset = 0;
-            isLoading = false;
-            hasMore = true;
             messagesContainer.getChildren().clear();
             updateLoadMoreButtonVisibility();
             showEmptyState(true);
         });
-        loadMoreMessages();
+        
+        // Load messages ngay lập tức với offset=0 để lấy tin mới nhất
+        loadMoreMessages(versionSnapshot);
     }
 
-    public void loadMoreMessages() {
-        if (isLoading) {
+    public void loadMoreMessages(int versionSnapshot) {
+        if (isLoading || !isCurrentVersion(versionSnapshot)) {
             return;
         }
         User currentUser = currentUserSupplier.get();
@@ -110,29 +122,51 @@ public class ConversationLoader {
         });
 
         final int requestOffset = currentOffset;
+        final boolean initialFetch = requestOffset == 0;
+        
         new Thread(() -> {
             try {
+                logger.debug("Fetching messages: offset={}, limit={}", requestOffset, pageSize);
                 List<Message> fetched = fetchMessages(requestOffset, pageSize);
+                logger.debug("Fetched {} messages", fetched.size());
+                
                 Platform.runLater(() -> {
-                    boolean initialFetch = requestOffset == 0;
+                    if (!isCurrentVersion(versionSnapshot)) {
+                        logger.debug("Version mismatch, ignoring fetch result");
+                        return;
+                    }
+                    
                     if (fetched.size() < pageSize) {
                         hasMore = false;
                     }
                     currentOffset += fetched.size();
-                    currentMessages.addAll(0, fetched);
-
-                    if (currentMessages.isEmpty()) {
-                        showEmptyState(true);
-                    } else {
-                        showEmptyState(false);
-                        addMessagesAtTop(fetched);
-                    }
-
-                    if (initialFetch && !currentMessages.isEmpty()) {
-                        scrollToBottom();
+                    
+                    if (initialFetch) {
+                        // Load lần đầu: add vào cuối để tin mới nhất ở cuối
+                        // Messages từ DB đã được reverse trong MessageDAO để có chronological order (cũ → mới)
+                        // Vậy khi add vào cuối, tin mới nhất sẽ ở cuối danh sách
+                        currentMessages.addAll(fetched);
+                        logger.debug("Initial fetch: {} messages loaded", currentMessages.size());
+                        
+                        if (currentMessages.isEmpty()) {
+                            showEmptyState(true);
+                        } else {
+                            showEmptyState(false);
+                            rebuildMessageList();
+                            // Scroll xuống cuối sau khi render xong - áp dụng cho cả private và group
+                            scrollToBottomDelayed();
+                        }
+                        // Chỉ mark as read cho private chat, không áp dụng cho group
                         if (selectedContactSupplier.get() != null) {
                             markPrivateChatAsRead();
                         }
+                    } else {
+                        // Load thêm tin cũ: add vào đầu
+                        // Messages từ DB đã được reverse, nên tin cũ nhất trong batch sẽ ở đầu list
+                        currentMessages.addAll(0, fetched);
+                        addMessagesAtTop(fetched);
+                        logger.debug("Load more: {} messages added, total={}", fetched.size(), currentMessages.size());
+                        // Không scroll khi load tin cũ, giữ nguyên vị trí scroll hiện tại
                     }
 
                     isLoading = false;
@@ -143,6 +177,9 @@ public class ConversationLoader {
             } catch (Exception e) {
                 logger.error("Failed to load more messages", e);
                 Platform.runLater(() -> {
+                    if (!isCurrentVersion(versionSnapshot)) {
+                        return;
+                    }
                     isLoading = false;
                     loadMoreButton.setText("Tải thêm");
                     loadMoreButton.setDisable(false);
@@ -158,13 +195,17 @@ public class ConversationLoader {
             if (!isCurrentConversationMessage(message)) {
                 return;
             }
+            // Nếu message đã tồn tại, reload toàn bộ để đảm bảo sync
             if (messageExists(message.getMessageId())) {
+                logger.debug("Message {} already exists, reloading", message.getMessageId());
                 reloadCurrentMessages();
                 return;
             }
 
+            logger.debug("Adding new message {} to conversation", message.getMessageId());
+            // Thêm message mới vào cuối list và UI
             currentMessages.add(message);
-            currentOffset = currentMessages.size();
+            // Không cập nhật currentOffset vì offset chỉ dùng cho pagination (load tin cũ)
             showEmptyState(false);
             if (hasMore && !messagesContainer.getChildren().contains(loadMoreButton)) {
                 updateLoadMoreButtonVisibility();
@@ -175,7 +216,7 @@ public class ConversationLoader {
                     timestampFormatter,
                     messageActionHandler
             ));
-            scrollToBottom();
+            scrollToBottomDelayed();
 
             User selectedContact = selectedContactSupplier.get();
             if (selectedContact != null && message.getSenderId() == selectedContact.getUserId()) {
@@ -231,14 +272,26 @@ public class ConversationLoader {
     }
 
     private void reloadCurrentMessages() {
+        final int versionSnapshot = conversationVersion;
+        final int currentSize = currentMessages.size();
         new Thread(() -> {
             try {
-                List<Message> refreshed = fetchMessages(0, Math.max(currentMessages.size(), pageSize));
+                // Load lại từ đầu với limit đủ lớn để đảm bảo có đủ tin mới
+                final int reloadLimit = currentSize > 0 ? currentSize + 10 : Math.max(pageSize, 20);
+                logger.debug("Reloading messages with limit={}", reloadLimit);
+                List<Message> refreshed = fetchMessages(0, reloadLimit);
                 Platform.runLater(() -> {
+                    if (!isCurrentVersion(versionSnapshot)) {
+                        return;
+                    }
+                    logger.debug("Reloaded {} messages", refreshed.size());
                     currentMessages.clear();
                     currentMessages.addAll(refreshed);
-                    currentOffset = currentMessages.size();
+                    currentOffset = refreshed.size();
+                    // Kiểm tra xem có còn tin cũ hơn không
+                    hasMore = refreshed.size() >= reloadLimit;
                     rebuildMessageList();
+                    scrollToBottomDelayed();
                     if (selectedContactSupplier.get() != null) {
                         markPrivateChatAsRead();
                     }
@@ -249,19 +302,27 @@ public class ConversationLoader {
         }).start();
     }
 
+    public void refreshCurrentConversation() {
+        reloadCurrentMessages();
+    }
+
     private void rebuildMessageList() {
         messagesContainer.getChildren().clear();
-        updateLoadMoreButtonVisibility();
         if (currentMessages.isEmpty()) {
             showEmptyState(true);
             return;
         }
 
         showEmptyState(false);
-        if (hasMore && !messagesContainer.getChildren().contains(loadMoreButton)) {
+        
+        // Thêm load more button ở đầu nếu còn tin cũ hơn
+        if (hasMore) {
             messagesContainer.getChildren().add(loadMoreButton);
         }
-        int insertIndex = messagesContainer.getChildren().contains(loadMoreButton) ? 1 : 0;
+        
+        // Render tất cả messages theo thứ tự chronological (cũ → mới)
+        // currentMessages đã được sắp xếp: tin cũ nhất ở index 0, tin mới nhất ở cuối
+        // Render theo đúng thứ tự: tin cũ ở trên, tin mới ở dưới
         for (Message message : currentMessages) {
             Node node = MessageViewFactory.createMessageNode(
                     message,
@@ -269,19 +330,26 @@ public class ConversationLoader {
                     timestampFormatter,
                     messageActionHandler
             );
-            messagesContainer.getChildren().add(insertIndex++, node);
+            messagesContainer.getChildren().add(node);
         }
-        scrollToBottom();
+        
+        logger.debug("Rebuilt message list: {} messages rendered", currentMessages.size());
+        // Không scroll ở đây, để caller quyết định khi nào scroll
     }
 
     private void addMessagesAtTop(List<Message> messages) {
         if (messages.isEmpty()) {
             return;
         }
+        
+        // Đảm bảo load more button ở đầu
         if (hasMore && !messagesContainer.getChildren().contains(loadMoreButton)) {
             messagesContainer.getChildren().add(0, loadMoreButton);
         }
-        int insertIndex = messagesContainer.getChildren().contains(loadMoreButton) ? 1 : 0;
+        
+        // Insert messages ngay sau load more button
+        // messages đã được sắp xếp (cũ → mới), insert theo đúng thứ tự
+        int insertIndex = hasMore ? 1 : 0;
         for (Message message : messages) {
             Node node = MessageViewFactory.createMessageNode(
                     message,
@@ -291,6 +359,8 @@ public class ConversationLoader {
             );
             messagesContainer.getChildren().add(insertIndex++, node);
         }
+        
+        logger.debug("Added {} messages at top", messages.size());
     }
 
     private void updateLoadMoreButtonVisibility() {
@@ -318,7 +388,38 @@ public class ConversationLoader {
     }
 
     private void scrollToBottom() {
-        Platform.runLater(() -> messagesScrollPane.setVvalue(1.0));
+        Platform.runLater(() -> {
+            messagesScrollPane.setVvalue(1.0);
+        });
+    }
+    
+    private void scrollToBottomDelayed() {
+        // Scroll nhiều lần để đảm bảo scroll xuống cuối sau khi layout xong
+        Platform.runLater(() -> {
+            messagesScrollPane.setVvalue(1.0);
+            Platform.runLater(() -> {
+                messagesScrollPane.setVvalue(1.0);
+                Platform.runLater(() -> {
+                    messagesScrollPane.setVvalue(1.0);
+                    // Đợi thêm một chút để layout hoàn tất
+                    new Thread(() -> {
+                        try {
+                            Thread.sleep(100); // Tăng delay lên 100ms
+                            Platform.runLater(() -> {
+                                messagesScrollPane.setVvalue(1.0);
+                                logger.debug("Scrolled to bottom, vvalue={}", messagesScrollPane.getVvalue());
+                            });
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                        }
+                    }).start();
+                });
+            });
+        });
+    }
+
+    private boolean isCurrentVersion(int versionSnapshot) {
+        return versionSnapshot == conversationVersion;
     }
 
     private boolean isCurrentConversationMessage(Message message) {

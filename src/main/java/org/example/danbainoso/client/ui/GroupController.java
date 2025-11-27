@@ -1,5 +1,6 @@
 package org.example.danbainoso.client.ui;
 
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
@@ -12,6 +13,8 @@ import org.example.danbainoso.shared.models.Group;
 import org.example.danbainoso.shared.models.User;
 import org.example.danbainoso.utils.LoggerUtil;
 import org.slf4j.Logger;
+
+import java.util.function.Consumer;
 
 public class GroupController {
     private static final Logger logger = LoggerUtil.getLogger(GroupController.class);
@@ -30,6 +33,7 @@ public class GroupController {
     
     private ClientRMI clientRMI;
     private User currentUser;
+    private Consumer<Group> onGroupCreated;
     
     @FXML
     public void initialize() {
@@ -38,6 +42,10 @@ public class GroupController {
     
     public void setCurrentUser(User user) {
         this.currentUser = user;
+    }
+
+    public void setOnGroupCreated(Consumer<Group> onGroupCreated) {
+        this.onGroupCreated = onGroupCreated;
     }
     
     @FXML
@@ -55,6 +63,9 @@ public class GroupController {
             Group createdGroup = clientRMI.createGroup(group);
             if (createdGroup != null) {
                 showAlert(Alert.AlertType.INFORMATION, "Thành công", "Tạo nhóm thành công!");
+                if (onGroupCreated != null) {
+                    Platform.runLater(() -> onGroupCreated.accept(createdGroup));
+                }
                 closeWindow();
             } else {
                 showAlert(Alert.AlertType.ERROR, "Lỗi", "Không thể tạo nhóm!");

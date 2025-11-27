@@ -23,7 +23,7 @@ public class Config {
     
     private static void setDefaults() {
         // Database configuration
-        properties.setProperty("db.url", "jdbc:mysql://localhost:3306/chat_app?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true");
+        properties.setProperty("db.url", "jdbc:mysql://localhost:3306/chat_app?useSSL=false&serverTimezone=Asia/Ho_Chi_Minh&allowPublicKeyRetrieval=true");
         properties.setProperty("db.username", "root");
         properties.setProperty("db.password", "");
         properties.setProperty("db.driver", "com.mysql.cj.jdbc.Driver");
