@@ -112,7 +112,7 @@ public class LoginController {
             scene.getStylesheets().add(getClass().getResource("/css/style.css").toExternalForm());
             
             Stage chatStage = new Stage();
-            chatStage.setTitle("DanBaiNoSo Chat - " + user.getUsername());
+            chatStage.setTitle("Metus - " + user.getUsername());
             chatStage.setScene(scene);
             chatStage.setOnCloseRequest(e -> {
                 try {

@@ -1,0 +1,30 @@
+# ============================================
+# CẤU HÌNH CHO MÁY SERVER (Máy A)
+# ============================================
+# Copy file này thành config.properties và sửa IP
+
+# Database Configuration (chỉ cần trên máy Server)
+db.url=jdbc:mysql://localhost:3306/chat_app?useSSL=false&serverTimezone=Asia/Ho_Chi_Minh&allowPublicKeyRetrieval=true
+db.username=root
+db.password=
+db.driver=com.mysql.cj.jdbc.Driver
+db.pool.size=10
+
+# Server Configuration
+# server.host options:
+#   - "auto" = Tự động lấy IP thực (KHUYẾN NGHỊ)
+#   - "192.168.x.x" = Chỉ định IP cụ thể
+#   - "localhost" = Chỉ cho phép kết nối local
+server.host=auto
+server.rmi.port=1099
+server.chat.port=8888
+server.video.port=9999
+
+# Client Configuration (nếu máy Server cũng chạy Client)
+client.rmi.registry=localhost
+client.rmi.port=1099
+
+# Application Configuration
+app.name=Metus Chat
+app.version=1.0.0
+

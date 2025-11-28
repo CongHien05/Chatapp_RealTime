@@ -5,6 +5,7 @@ import org.example.danbainoso.shared.ChatService;
 import org.example.danbainoso.shared.VideoService;
 import org.example.danbainoso.utils.Config;
 import org.example.danbainoso.utils.LoggerUtil;
+import org.example.danbainoso.utils.NetworkUtil;
 import org.slf4j.Logger;
 
 import java.rmi.registry.LocateRegistry;
@@ -23,6 +24,32 @@ public class ServerMain {
             }
             logger.info("Database connection established successfully");
             
+            // Get server configuration
+            String configHost = Config.getServerHost();
+            int port = Config.getServerRmiPort();
+            
+            // Determine the actual host to use
+            String host;
+            if ("auto".equalsIgnoreCase(configHost)) {
+                // Auto-detect local IP address
+                host = NetworkUtil.getLocalIpAddress();
+                logger.info("Auto-detected IP address: {}", host);
+            } else {
+                // Use configured host
+                host = configHost;
+                logger.info("Using configured host: {}", host);
+            }
+            
+            // Set RMI hostname property for remote access
+            // This is CRITICAL for allowing clients from other machines to connect
+            if (!"localhost".equals(host) && !"127.0.0.1".equals(host)) {
+                System.setProperty("java.rmi.server.hostname", host);
+                logger.info("Set RMI hostname to: {} (Remote access enabled)", host);
+            } else {
+                logger.warn("Server running on localhost - remote access DISABLED");
+                logger.warn("To enable remote access, set server.host=auto in config.properties");
+            }
+            
             // Create service implementations
             // Note: ChatServiceImpl and VideoServiceImpl extend UnicastRemoteObject
             // which automatically exports them in the constructor, so we don't need to export again
@@ -31,16 +58,13 @@ public class ServerMain {
             VideoService videoService = new VideoServiceImpl();
             
             // Create or get RMI registry
-            String host = Config.getServerHost();
-            int port = Config.getServerRmiPort();
-            
             Registry registry;
             try {
-                registry = LocateRegistry.getRegistry(host, port);
+                registry = LocateRegistry.getRegistry(port);
                 registry.list(); // Test if registry exists
-                logger.info("Using existing RMI registry at {}:{}", host, port);
+                logger.info("Using existing RMI registry at port {}", port);
             } catch (Exception e) {
-                logger.info("Creating new RMI registry at {}:{}", host, port);
+                logger.info("Creating new RMI registry at port {}", port);
                 registry = LocateRegistry.createRegistry(port);
             }
             
@@ -55,6 +79,9 @@ public class ServerMain {
             logger.info("VideoService bound: VideoService");
             logger.info("=========================================");
             logger.info("Server is running... Press Ctrl+C to stop");
+            logger.info("");
+            logger.info("For remote access, clients should connect to: {}", host);
+            logger.info("Make sure firewall allows port {} (TCP)", port);
             
             // Add shutdown hook
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {

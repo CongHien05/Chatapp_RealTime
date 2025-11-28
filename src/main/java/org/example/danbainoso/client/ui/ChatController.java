@@ -1048,7 +1048,7 @@ public class ChatController implements ChatClientCallback, VideoClientCallback {
                 Scene loginScene = new Scene(root, 400, 350);
                 loginScene.getStylesheets().add(getClass().getResource("/css/style.css").toExternalForm());
                 stage.setScene(loginScene);
-                stage.setTitle("Đăng nhập - DanBaiNoSo Chat");
+                stage.setTitle("Đăng nhập - Metus Chat");
                 stage.centerOnScreen();
                 
                 logger.info("User logged out successfully");
