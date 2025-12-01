@@ -1,0 +1,253 @@
+BankingRMI – Hướng dẫn học code
+================================
+
+1. Mô hình tổng quan
+--------------------
+- Project mô phỏng hệ thống eBanking đơn giản sử dụng Java RMI (Remote Method Invocation).
+- RMI cho phép client gọi trực tiếp các method trên server giống như gọi hàm cục bộ.
+- Kết nối gồm 2 luồng chính:
+  1. Client gọi `IBanking` trên server để thực hiện giao dịch.
+  2. Server đẩy thông báo ngược về client qua interface `IClientCallback`.
+
+2. Cấu trúc thư mục chính
+-------------------------
+- `src/common`: Chứa các interface dùng chung giữa client và server.
+  - `IBanking`: Định nghĩa các nghiệp vụ (vấn tin, nạp, rút, chuyển, đăng ký callback).
+  - `IClientCallback`: Cho phép server gọi ngược lại client để gửi thông báo.
+- `src/server`: Code chạy phía server.
+  - `BankingImpl`: Implement `IBanking`, giữ dữ liệu tài khoản và xử lý giao dịch.
+  - `Server`: Khởi tạo `BankingImpl`, mở RMI registry port 1099, bind tên `BankingService`.
+- `src/client`: Code chạy phía client.
+  - `ClientServiceImpl`: Implement `IClientCallback`, giữ logic gọi server và cập nhật GUI.
+  - `ClientGUI`: Giao diện Swing, gọi `ClientServiceImpl` để thực thi hành động người dùng.
+- `accounts.txt`: File dữ liệu đơn giản lưu STK và số dư (định dạng `accountId,balance`).
+
+3. Trình tự hoạt động chi tiết
+------------------------------
+1. Khởi động server (`server.Server`):
+   - **Tạo đối tượng dịch vụ**: `new BankingImpl()` → trong constructor đọc dữ liệu tài khoản, khởi tạo `accounts` và `clientMap`.
+   - **Nạp dữ liệu**: `loadAccounts()` quét file `accounts.txt`, mỗi dòng `accountId,balance` được đưa vào Map; console log để người nghe thấy server thực sự “đang load”.
+   - **Xuất bản dịch vụ**: `LocateRegistry.createRegistry(1099)` bảo đảm registry tồn tại rồi `registry.bind("BankingService", bankingService)`; nhấn mạnh tên này chính là “endpoint” client sẽ lookup.
+   - **Kết luận bước**: console in `>>> Server is running...` → slide có thể show screenshot log để khẳng định server đã sẵn sàng.
+2. Khởi chạy client (`client.ClientGUI`):
+   - **Thu thập đầu vào**: `JOptionPane.showInputDialog` yêu cầu người dùng nhập số tài khoản; nếu bỏ trống thì thoát → chứng tỏ UI có kiểm soát ngay từ đầu.
+   - **Tạo service riêng cho user**: `new ClientServiceImpl(accountId)` giữ hẳn `accountId` và chuẩn bị nhận callback.
+   - **Gắn GUI**: constructor `ClientGUI(service)` gọi `service.setGUI(this)` → service biết đường cập nhật giao diện.
+   - **Kết nối nền**: tạo thread gọi `service.connectToServer()` để tránh "đơ" UI; trong method này:
+     * `Naming.lookup("BankingService")` lấy STUB từ registry (stub là proxy object đại diện cho BankingImpl trên server, được RMI tự động tạo khi server bind; xem file RMI_STUB_EXPLANATION.txt để hiểu chi tiết).
+     * `registerClient(accountId, this)` đăng ký callback → server lưu client vào `clientMap`.
+     * `checkBalance()` được gọi ngay để kéo số dư đầu tiên lên giao diện.
+   - **Kết luận**: sau bước 2, client đã hiện cửa sổ, có số dư ban đầu và sẵn sàng thao tác.
+3. Người dùng thao tác trên GUI:
+   - **Thread-safe UI**: mỗi `ActionListener` tạo thread riêng (ví dụ `new Thread(() -> service.deposit(...)).start()`), bạn có thể nhấn mạnh điều này giúp demo không bị “đơ”.
+   - **Kiểm tra đầu vào**: `ClientServiceImpl` đảm bảo số tiền > 0, tài khoản nhận không trống và không trùng tài khoản nguồn; thuyết trình nên đọc lướt qua block `if` để người nghe thấy tính “an toàn”.
+   - **Gọi dịch vụ từ xa**: tùy nút, service sẽ gọi `checkBalance`, `deposit`, `withdraw`, `transfer` trên server; GUI ghi log (“Nạp tiền XX thành công...”) để minh họa người dùng luôn có feedback.
+4. Server xử lý nghiệp vụ:
+   - **Validate & cập nhật**: mỗi method trong `BankingImpl` kiểm tra sự tồn tại tài khoản, số dư đủ hay chưa; nếu ổn sẽ cập nhật Map.
+   - **Persist**: sau khi Map thay đổi, gọi `saveAccounts()` (được đánh dấu `synchronized`) để ghi toàn bộ dữ liệu ra `accounts.txt` → đảm bảo nếu restart server thì số dư vẫn giữ nguyên.
+   - **Gửi thông báo**: riêng `transfer`, sau khi cập nhật số dư hai tài khoản, server tìm `clientMap.get(toAccountId)`; nếu người nhận đang online thì gọi `notify()` để họ thấy popup “Bạn vừa nhận...”.
+   - **Logging**: mọi hành động được `System.out.println` (“DEPOSIT”, “WITHDRAW”, “TRANSFER...”), giúp bạn trình bày kèm log console cho trực quan.
+5. Client nhận phản hồi:
+   - **Trả về tức thì**: kết quả true/false từ server giúp client cập nhật log/số dư ngay khi người dùng vừa bấm nút.
+   - **Callback realtime**: khi `notify` được gọi, `ClientServiceImpl` hiện thông báo, ghi log “THÔNG BÁO: ...”, sau đó gọi `checkBalance()` lần nữa để refresh số dư → người nghe hiểu rõ vì sao số dư trên GUI luôn chính xác.
+   - **UI thread-safety**: `ClientGUI` dùng `SwingUtilities.invokeLater` trong mọi method update UI, bạn có thể nhấn mạnh điều này khi show code để chứng minh hệ thống không bị “cross-thread” lỗi.
+
+4. Phân tích từng thành phần
+----------------------------
+- `IBanking` (`src/common/IBanking.java`)
+  - Định nghĩa rõ hợp đồng giữa client và server. Mọi method đều `throws RemoteException` vì liên quan RMI.
+- `IClientCallback` (`src/common/IClientCallback.java`)
+  - Server sử dụng interface này để gửi thông báo realtime cho client (ví dụ nhận tiền chuyển khoản).
+- `BankingImpl` (`src/server/BankingImpl.java`)
+  - Thuộc lớp `UnicastRemoteObject` để tự động xuất bản đối tượng RMI.
+  - Giữ `Map<String, Double> accounts` và `Map<String, IClientCallback> clientMap`.
+  - `loadAccounts()` đọc file, `saveAccounts()` ghi file đồng bộ.
+  - Các nghiệp vụ:
+    * `checkBalance`: Trả về chuỗi định dạng `%,.0f VND`.
+    * `deposit`/`withdraw`: Kiểm tra điều kiện, cập nhật Map, lưu file.
+    * `transfer`: Kiểm tra tài khoản, số dư, ngăn chuyển cho chính mình, cập nhật 2 tài khoản và gọi callback người nhận.
+  - `registerClient`: Lưu lại đối tượng callback theo `accountId` để có thể gửi notify.
+- `Server` (`src/server/Server.java`)
+  - Tạo RMI registry ngay trong code bằng `LocateRegistry.createRegistry(1099)`.
+  - Bind `BankingImpl` bằng tên `BankingService` -> client lookup theo tên này.
+- `ClientServiceImpl` (`src/client/ClientServiceImpl.java`)
+  - Cũng extends `UnicastRemoteObject` để server có thể gọi ngược lại.
+  - Quản lý kết nối: `connectToServer()` gọi `Naming.lookup("BankingService")`, đăng ký callback và vấn tin số dư ban đầu.
+  - Xử lý nghiệp vụ phía client:
+    * Validate input (số tiền > 0, tài khoản nhận khác rỗng, không chuyển cho chính mình).
+    * Gọi server tương ứng.
+    * Ghi log, cập nhật GUI, hiển thị thông báo lỗi khi cần.
+  - `notify`: nhận message từ server, gọi `gui.showNotification` và `checkBalance()` để cập nhật số dư.
+- `ClientGUI` (`src/client/ClientGUI.java`)
+  - Tạo form Swing với các nút Vấn tin, Nạp tiền, Rút tiền, Chuyển khoản.
+  - Mỗi action chạy trên thread riêng -> tránh treo UI khi gọi RMI.
+  - Cung cấp các helper để hiển thị số dư, log, popup thông báo/lỗi/cảnh báo.
+
+5. Cách đọc và thử nghiệm project (không dùng terminal)
+------------------------------------------------------
+1. Mở project bằng IDE hỗ trợ Java (IntelliJ IDEA, Eclipse…).
+2. Tạo hai cấu hình chạy (Run Configuration):
+   - `Server`: lớp chính `server.Server`.
+   - `Client`: lớp chính `client.ClientGUI`.
+3. Quy trình thử:
+   - Run cấu hình `Server` trước, quan sát console hiển thị `>>> Server is running...`.
+   - Run một hoặc nhiều `Client`. Mỗi client nhập số tài khoản có trong `accounts.txt`.
+   - Thực hiện các giao dịch trên GUI, theo dõi log và cập nhật số dư.
+   - Thử chuyển khoản giữa 2 client khác nhau để thấy callback thông báo realtime.
+4. Khi muốn cập nhật dữ liệu mẫu, chỉnh sửa `accounts.txt` theo dạng `accountId,balance` (mỗi dòng một tài khoản).
+
+6. Gợi ý học sâu hơn
+-------------------
+- Thử thay `HashMap` bằng `ConcurrentHashMap` để an toàn khi nhiều client truy cập đồng thời.
+- Bổ sung xác thực đăng nhập (ví dụ thêm mật khẩu trong file).
+- Thêm lịch sử giao dịch, đồng bộ hóa giao diện đẹp hơn, hoặc chuyển sang JavaFX.
+- Nâng cấp từ file sang cơ sở dữ liệu (MySQL, PostgreSQL) và dùng DAO.
+- Thử đóng gói thành module Maven/Gradle để quản lý dependency tốt hơn.
+
+7. Kịch bản demo & trình bày code
+---------------------------------
+1. **Giới thiệu nhanh kiến trúc**
+   - Mở sơ đồ thư mục, nhấn mạnh 3 lớp `common`, `server`, `client`.
+   - Vẽ (hoặc dùng slide) mô tả 2 chiều giao tiếp: client → server (giao dịch) và server → client (callback).
+2. **Demo chạy thực tế**
+   - Bước 1: Run `server.Server`, chỉ ra log “`>>> Server is running...`”.
+   - Bước 2: Run `client.ClientGUI` với tài khoản `1001`, trình diễn vấn tin và nạp tiền.
+   - Bước 3: Run thêm một client khác (tài khoản `1002`), thực hiện chuyển khoản từ `1001` sang `1002`.
+   - Highlight: Client `1002` nhận popup thông báo qua callback; log cập nhật ở cả hai phía.
+3. **Đi sâu vào code khi trình bày**
+   - Mở `IBanking` để giải thích hợp đồng dịch vụ → liên hệ với các nút trên GUI.
+   - Chuyển sang `BankingImpl.transfer()`: vừa xử lý nghiệp vụ, vừa gọi `recipientClient.notify`.
+   - Mở `ClientServiceImpl.notify()` & `ClientGUI.showNotification()` để thấy đường đi của thông báo.
+   - Nhấn mạnh `saveAccounts()` giúp dữ liệu bền vững giữa các lần chạy, cho thấy demo reset vẫn giữ số dư.
+4. **Chốt lại sau demo**
+   - Tóm tắt ưu điểm: kiến trúc rõ ràng, hỗ trợ multi-client, có callback realtime.
+   - Đề xuất hướng phát triển (tham chiếu mục 6) để thể hiện tầm nhìn.
+
+8. Flow “trình bày code siêu mượt”
+----------------------------------
+- **Mở cảnh**  
+  “Chúng ta có một hệ thống eBanking RMI nhỏ gọn gồm 3 layer: `common` định nghĩa hợp đồng, `server` cài đặt nghiệp vụ, `client` hiển thị GUI và gọi dịch vụ.”
+- **Đi vào hợp đồng chung**  
+  1. Mở `IBanking`: “Đây là API mà client gọi – mỗi method map 1 thao tác trên UI.”  
+  2. Mở `IClientCallback`: “Hợp đồng chiều ngược lại để server bắn thông báo realtime.”
+- **Chuyển sang server**  
+  1. `BankingImpl` constructor: “Tải dữ liệu từ `accounts.txt`, tạo kho tài khoản và danh sách client online.”  
+  2. `loadAccounts()` & `saveAccounts()`: nhấn mạnh persistence và synchronized.  
+  3. `checkBalance` → `deposit` → `withdraw`: lướt nhanh, chỉ ra validate + cập nhật file.  
+  4. `transfer`: dừng lâu hơn, highlight chống chuyển cho chính mình, cập nhật 2 tài khoản, sau đó gọi callback → liên hệ lại `IClientCallback`.  
+  5. `registerClient`: “Mỗi lần client đăng ký, server giữ bản đồ `accountId` ↔ callback để bắn notify.”
+- **Hoàn thiện server runtime**  
+  Mở `Server.java`: “Đây là điểm vào, tạo `BankingImpl`, mở registry port 1099, bind `BankingService`. Demo console: `>>> Server is running...`.”
+- **Đổi góc nhìn sang client**  
+  1. `ClientGUI.main`: “Đăng nhập, khởi tạo `ClientServiceImpl`, chạy GUI và luồng kết nối.”  
+  2. `ClientServiceImpl.connectToServer`: “Lookup tên `BankingService`, đăng ký callback → chính là bước server lưu chúng ta vào `clientMap`.”  
+  3. Giải thích `checkBalance/deposit/withdraw/transfer`: kiểm tra input, gọi server, cập nhật GUI.  
+  4. `notify`: “Khi server gọi, client show popup và tự vấn tin lại → user luôn thấy số dư mới nhất.”  
+  5. Liên hệ với UI: mở `ClientGUI` highlight các nút chạy trên thread riêng, đảm bảo UI không bị khóa.
+- **Kết lại flow**  
+  “Như vậy, từ hợp đồng chung → triển khai server → điểm vào server → client GUI → callback, ta đã đi trọn vòng đời 1 giao dịch mà không bỏ sót mắt xích nào.”
+
+9. Tại sao validate ở cả Client VÀ Server?
+------------------------------------------
+**Câu hỏi thường gặp**: "Tại sao không validate ở server luôn, bỏ validate ở client đi?"
+
+**Trả lời ngắn gọn**: 
+- Validate ở CLIENT = UX tốt (phản hồi nhanh, không cần gọi server)
+- Validate ở SERVER = BẮT BUỘC (security, client có thể bị hack/bypass)
+
+**Giải thích chi tiết**:
+
+1. **Validate ở Client (ClientServiceImpl)**:
+   - Mục đích: Cải thiện trải nghiệm người dùng (UX)
+   - Lợi ích:
+     * Phản hồi tức thì: Người dùng biết lỗi ngay khi nhập sai (ví dụ: số tiền <= 0)
+     * Giảm tải server: Không cần gửi request mạng cho dữ liệu sai
+     * Tiết kiệm băng thông: Tránh gọi RMI không cần thiết
+   - Ví dụ trong code:
+     * `deposit()`: Kiểm tra `amount <= 0` → show warning ngay, không gọi server
+     * `transfer()`: Kiểm tra `toAccount.isEmpty()`, `toAccount.equals(accountId)` → báo lỗi ngay
+   - ⚠️ LƯU Ý: Client validation KHÔNG đảm bảo an toàn vì:
+     * Code client có thể bị reverse engineer
+     * Hacker có thể tạo client giả, bỏ qua validation
+     * Network có thể bị intercept và modify request
+
+2. **Validate ở Server (BankingImpl)** - QUAN TRỌNG NHẤT:
+   - Mục đích: Bảo mật và đảm bảo tính toàn vẹn dữ liệu
+   - Lợi ích:
+     * Bảo vệ dữ liệu: Server là nơi duy nhất đáng tin cậy
+     * Chống tấn công: Dù client bị hack, server vẫn kiểm tra lại
+     * Đảm bảo nghiệp vụ: Logic nghiệp vụ phải được thực thi đúng
+   - Ví dụ trong code:
+     * `deposit()`: Kiểm tra `!accounts.containsKey(accountId) || amount <= 0`
+     * `withdraw()`: Kiểm tra số dư đủ (`currentBalance < amount`)
+     * `transfer()`: Kiểm tra cả 2 tài khoản tồn tại, số dư đủ, không chuyển cho chính mình
+   - ✅ Đây là lớp phòng thủ cuối cùng, KHÔNG THỂ BỎ QUA
+
+3. **Best Practice - Defense in Depth (Phòng thủ nhiều lớp)**:
+   ```
+   User Input → [Client Validation] → Network → [Server Validation] → Business Logic → Database
+                ↑ UX tốt, nhanh        ↑ BẮT BUỘC, an toàn
+   ```
+   - Client validation = Lớp đầu tiên (filter sớm, UX tốt)
+   - Server validation = Lớp cuối cùng (bảo mật, không thể bypass)
+
+4. **So sánh validation hiện tại trong code**:
+   
+   **Client (ClientServiceImpl)**:
+   - ✅ Kiểm tra `amount <= 0` (deposit, withdraw, transfer)
+   - ✅ Kiểm tra `toAccount.isEmpty()` (transfer)
+   - ✅ Kiểm tra `toAccount.equals(accountId)` (transfer)
+   - ❌ KHÔNG kiểm tra tài khoản tồn tại (phải gọi server mới biết)
+   - ❌ KHÔNG kiểm tra số dư đủ (phải gọi server mới biết)
+   
+   **Server (BankingImpl)**:
+   - ✅ Kiểm tra tài khoản tồn tại (`accounts.containsKey`)
+   - ✅ Kiểm tra `amount <= 0`
+   - ✅ Kiểm tra số dư đủ (`currentBalance < amount`)
+   - ✅ Kiểm tra không chuyển cho chính mình (`fromAccountId.equals(toAccountId)`)
+   - ⚠️ CÓ THỂ CẢI THIỆN: Thêm kiểm tra `toAccountId` null/empty rõ ràng hơn
+
+5. **Cải thiện có thể thực hiện**:
+   - Server nên validate đầy đủ hơn:
+     ```java
+     // Trong BankingImpl.transfer()
+     if (toAccountId == null || toAccountId.trim().isEmpty()) {
+         return false; // Thêm check này
+     }
+     ```
+   - Server có thể trả về message lỗi chi tiết hơn (thay vì chỉ `return false`):
+     ```java
+     // Có thể tạo enum hoặc exception để phân biệt loại lỗi
+     // Ví dụ: INVALID_AMOUNT, ACCOUNT_NOT_FOUND, INSUFFICIENT_BALANCE
+     ```
+   - Client có thể hiển thị message lỗi từ server (nếu server trả về message)
+
+6. **Kết luận cho trình bày**:
+   - "Chúng ta validate ở cả 2 nơi vì mỗi nơi có mục đích khác nhau"
+   - "Client validation = UX tốt, Server validation = Bảo mật bắt buộc"
+   - "Đây là nguyên tắc Defense in Depth - phòng thủ nhiều lớp trong bảo mật"
+   - "Trong thực tế, server validation là QUAN TRỌNG NHẤT, client validation chỉ là 'nice to have'"
+
+10. RMI Stub - Giải thích chi tiết
+----------------------------------
+Stub là đối tượng proxy được RMI tự động tạo để client giao tiếp với server.
+
+📍 Stub là gì:
+- Proxy object đại diện cho remote object trên server
+- Client không gọi trực tiếp BankingImpl, mà gọi qua stub
+- Stub xử lý serialization, network communication tự động
+
+📍 Stub được tạo ở đâu:
+- Tự động tạo khi server bind: `registry.bind("BankingService", bankingService)`
+- Lưu trong Registry, client nhận khi lookup: `Naming.lookup("BankingService")`
+- File stub: `BankingImpl_Stub.class` trong thư mục build output
+
+📍 Stub được dùng ở đâu trong code:
+- `ClientServiceImpl.java` dòng 50: `bankingService = (IBanking) Naming.lookup(...)`
+- Biến `bankingService` chứa stub, không phải BankingImpl thật
+- Mọi method call (`deposit`, `withdraw`, `transfer`) đều đi qua stub
+
+Xem file `RMI_STUB_EXPLANATION.txt` để hiểu chi tiết về stub!
+
+Chúc bạn học tốt và hiểu rõ cách BankingRMI hoạt động! Nếu cần mở rộng thêm phần nào, hãy ghi chú lại trực tiếp trong file này để tiện theo dõi.
+

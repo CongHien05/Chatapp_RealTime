@@ -33,7 +33,14 @@ public class ServerMain {
             // Create or get RMI registry
             String host = Config.getServerHost();
             int port = Config.getServerRmiPort();
-            
+
+            // Đặt hostname cho RMI khi chia sẻ server qua mạng LAN/Internet
+            // - Nếu chỉ chạy local: để server.host=localhost (mặc định)
+            // - Nếu cho máy khác kết nối: sửa server.host trong config.properties
+            //   thành địa chỉ IP của máy chạy server (ví dụ: 192.168.1.5),
+            //   RMI sẽ dùng IP này khi sinh stub cho callback về client.
+            System.setProperty("java.rmi.server.hostname", host);
+
             Registry registry;
             try {
                 registry = LocateRegistry.getRegistry(host, port);

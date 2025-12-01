@@ -1,0 +1,85 @@
+TÓM TẮT CÁC TỐI ƯU ĐÃ THỰC HIỆN
+==================================
+
+1. BankingImpl.java (Server)
+-----------------------------
+✅ Thread Safety:
+   - Thay HashMap → ConcurrentHashMap cho accounts và clientMap
+   - Đảm bảo an toàn khi nhiều client truy cập đồng thời
+
+✅ Validation cải thiện:
+   - Thêm kiểm tra null/empty cho tất cả accountId
+   - Validate toAccountId trong transfer (null/empty)
+   - Dùng trim() để loại bỏ khoảng trắng thừa
+   - Kiểm tra Double null thay vì containsKey (an toàn hơn)
+
+✅ Error Handling:
+   - Xử lý callback disconnect tốt hơn (remove khỏi map khi RemoteException)
+   - Thêm method unregisterClient() để cleanup
+   - Validate input trong registerClient()
+
+✅ Code Quality:
+   - Dùng final cho Map fields
+   - Comment rõ ràng hơn
+   - Xử lý edge cases tốt hơn
+
+2. ClientServiceImpl.java (Client)
+-----------------------------------
+✅ Null Safety:
+   - Kiểm tra bankingService == null trước mọi RMI call
+   - Kiểm tra gui == null để tránh NullPointerException
+   - Thông báo lỗi rõ ràng khi chưa kết nối
+
+✅ Validation:
+   - Validate toAccount null/empty trong transfer
+   - Dùng trim() cho toAccount
+   - Thông báo lỗi chi tiết hơn khi giao dịch thất bại
+
+✅ Code Cleanup:
+   - Xóa import không dùng (LocateRegistry, Registry)
+
+3. ClientGUI.java (Client UI)
+-----------------------------
+✅ Input Validation:
+   - Kiểm tra empty trước khi parse số
+   - Validate amount > 0 ở UI level
+   - Thông báo lỗi rõ ràng hơn ("Vui lòng nhập số tiền", "Số tiền không hợp lệ. Vui lòng nhập số.")
+   - Trim input trước khi xử lý
+
+✅ User Experience:
+   - Validation sớm ở UI → phản hồi nhanh hơn
+   - Message lỗi cụ thể hơn
+
+4. Server.java (Server Main)
+-----------------------------
+✅ Exception Handling:
+   - Xử lý AlreadyBoundException (rebind nếu cần)
+   - Xử lý registry đã tồn tại (getRegistry thay vì createRegistry)
+   - Error messages rõ ràng hơn
+
+✅ Shutdown Hook:
+   - Đăng ký shutdown hook để cleanup khi server tắt
+   - Unbind service trước khi tắt
+   - Log shutdown process
+
+✅ Server Lifecycle:
+   - Thread.currentThread().join() để giữ server chạy
+   - Hướng dẫn người dùng (Press Ctrl+C to stop)
+
+TỔNG KẾT
+---------
+✅ Thread Safety: ConcurrentHashMap cho multi-client
+✅ Validation: Đầy đủ ở cả client và server
+✅ Error Handling: Xử lý edge cases và exceptions tốt hơn
+✅ Code Quality: Clean code, null safety, better comments
+✅ User Experience: Validation sớm, messages rõ ràng
+✅ Server Stability: Shutdown hook, better exception handling
+
+CÁC CẢI TIẾN QUAN TRỌNG NHẤT:
+1. ConcurrentHashMap → An toàn với nhiều client
+2. Validation đầy đủ → Tránh lỗi runtime
+3. Null checks → Tránh NullPointerException
+4. Shutdown hook → Cleanup khi tắt server
+5. Better error messages → Dễ debug và sử dụng
+
+

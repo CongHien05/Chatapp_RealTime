@@ -1,0 +1,168 @@
+RMI STUB - GIẢI THÍCH CHI TIẾT
+================================
+
+1. STUB LÀ GÌ?
+--------------
+Stub (hay "stub object") là một đối tượng PROXY (đại diện) được RMI tự động tạo ra.
+
+- Stub đại diện cho đối tượng Remote trên server
+- Client không trực tiếp gọi đối tượng server, mà gọi qua stub
+- Stub chịu trách nhiệm:
+  * Serialize tham số method
+  * Gửi request qua network tới server
+  * Nhận response từ server
+  * Deserialize kết quả trả về
+  * Trả về cho client code
+
+2. STUB ĐƯỢC TẠO Ở ĐÂU?
+------------------------
+Stub được RMI tự động tạo khi:
+- Server bind đối tượng vào Registry
+- Client lookup đối tượng từ Registry
+
+Trong code của bạn:
+
+📍 SERVER SIDE (Server.java):
+```
+BankingImpl bankingService = new BankingImpl();  // Đối tượng thật
+registry.bind("BankingService", bankingService); // RMI tự động tạo stub ở đây
+```
+
+Khi bind, RMI tự động:
+1. Tạo stub class cho BankingImpl (tên: BankingImpl_Stub.class)
+2. Lưu stub vào Registry
+3. Client sẽ nhận stub này khi lookup
+
+📍 CLIENT SIDE (ClientServiceImpl.java - dòng 50):
+```
+bankingService = (IBanking) Naming.lookup("BankingService");
+```
+
+Khi lookup, client nhận về:
+- KHÔNG phải đối tượng BankingImpl thật
+- MÀ là stub object (BankingImpl_Stub) đại diện cho BankingImpl
+
+3. STUB ĐƯỢC LƯU Ở ĐÂU?
+------------------------
+Stub class được generate tự động và lưu ở:
+
+📁 Thư mục build/compile output:
+- IntelliJ IDEA: `out/production/BankingRMI/server/` hoặc `target/classes/server/`
+- Eclipse: `bin/server/`
+- File tên: `BankingImpl_Stub.class`
+
+📁 Cấu trúc file stub:
+```
+server/
+  ├── BankingImpl.class          (class gốc)
+  ├── BankingImpl_Stub.class     (stub - được RMI tự động tạo)
+  └── BankingImpl_Skel.class     (skeleton - cũ, Java 8+ không cần)
+```
+
+4. STUB HOẠT ĐỘNG NHƯ THẾ NÀO?
+-------------------------------
+Khi client gọi method:
+
+```
+Client Code:
+  bankingService.deposit(accountId, 1000);
+         ↓
+  [STUB] BankingImpl_Stub.deposit()
+         ↓
+  Serialize: accountId, 1000 → bytes
+         ↓
+  Network: Gửi qua RMI protocol
+         ↓
+  Server: BankingImpl.deposit() thực thi
+         ↓
+  Network: Trả về kết quả
+         ↓
+  [STUB] Deserialize kết quả
+         ↓
+  Client nhận: boolean success
+```
+
+5. VÍ DỤ TRONG CODE CỦA BẠN
+----------------------------
+File: src/client/ClientServiceImpl.java
+
+Dòng 15:
+```java
+private IBanking bankingService;  // Biến này chứa STUB, không phải BankingImpl thật
+```
+
+Dòng 50:
+```java
+bankingService = (IBanking) Naming.lookup("BankingService");
+// ↑ Đây chính là lúc client nhận STUB từ registry
+// bankingService giờ là BankingImpl_Stub, không phải BankingImpl
+```
+
+Dòng 78, 112, 148, 194:
+```java
+bankingService.checkBalance(accountId);  // Gọi qua stub
+bankingService.deposit(accountId, amount); // Gọi qua stub
+bankingService.withdraw(accountId, amount); // Gọi qua stub
+bankingService.transfer(accountId, toAccount, amount); // Gọi qua stub
+```
+
+Mỗi lần gọi, stub sẽ:
+1. Serialize tham số
+2. Gửi request tới server
+3. Nhận response
+4. Deserialize và trả về
+
+6. TẠI SAO CẦN STUB?
+--------------------
+✅ Che giấu complexity: Client code không cần biết về network, serialization
+✅ Type safety: Stub implement cùng interface (IBanking) → type-safe
+✅ Transparent: Client gọi như gọi method local, nhưng thực tế là remote call
+✅ RMI tự động xử lý: Network errors, serialization, deserialization
+
+7. CÁCH XEM STUB CLASS (Nếu muốn)
+----------------------------------
+Sau khi compile và chạy server ít nhất 1 lần:
+
+1. Mở thư mục build output:
+   - IntelliJ: File → Project Structure → Project → Compiler output
+   - Hoặc tìm trong `out/` hoặc `target/`
+
+2. Tìm file: `server/BankingImpl_Stub.class`
+
+3. Có thể decompile bằng:
+   - IntelliJ: Right-click → Decompile
+   - Hoặc dùng: `javap -c server.BankingImpl_Stub`
+
+8. LƯU Ý QUAN TRỌNG
+-------------------
+⚠️ Stub được tạo TỰ ĐỘNG bởi RMI, bạn KHÔNG cần viết code cho stub
+⚠️ Stub class chỉ tồn tại sau khi compile và chạy server
+⚠️ Client chỉ cần interface (IBanking.class), không cần BankingImpl.class
+⚠️ Stub implement cùng interface → có thể cast về IBanking
+
+9. SO SÁNH STUB vs SKELETON
+----------------------------
+- STUB (Client side):
+  * Chạy trên client
+  * Đại diện cho remote object
+  * Gửi request tới server
+
+- SKELETON (Server side - Java 8+ không cần):
+  * Chạy trên server
+  * Nhận request từ client
+  * Gọi method trên remote object
+  * Java 8+ dùng dynamic proxy thay vì skeleton
+
+10. TÓM TẮT
+-----------
+Stub = Đối tượng proxy trên client, đại diện cho remote object trên server
+
+📍 Tạo ở đâu: Tự động bởi RMI khi server bind object
+📍 Lưu ở đâu: Thư mục build output (BankingImpl_Stub.class)
+📍 Dùng ở đâu: ClientServiceImpl.java, biến bankingService
+📍 Khi nào: Mỗi lần client gọi method remote
+
+Stub giúp bạn gọi method trên server như gọi method local, nhưng thực tế
+đang giao tiếp qua network!
+
+
